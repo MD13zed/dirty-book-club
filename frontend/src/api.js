@@ -1,4 +1,4 @@
-const BASE = "/api";
+const BASE = import.meta.env.VITE_API_URL + "/api";
 
 function token() {
   return localStorage.getItem("dbc_token") || "";
@@ -30,7 +30,7 @@ async function req(method, path, body) {
 
 export const api = {
   // Auth
-  getMe: ()              => req("GET",    "/auth/me".replace("/api", "")),
+  getMe: () => fetch(`${import.meta.env.VITE_API_URL}/auth/me`, { headers: headers() }).then(r => r.json()),
 
   // Books
   getBooks: ()           => req("GET",    "/books"),
