@@ -14,7 +14,7 @@ export default function Login() {
         </p>
 
         {/* Discord Login Button */}
-        <a href="/auth/discord" style={{ textDecoration:"none" }}>
+        <a href="https://dirty-book-club-5mry.vercel.app/auth/discord" style={{ textDecoration:"none" }}>
           <button style={{
             width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:12,
             background:"#5865F2", border:"none", borderRadius:6,
