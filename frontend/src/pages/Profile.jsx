@@ -1,0 +1,140 @@
+import { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
+import { useTheme, useAuth } from "../App";
+import { api } from "../api";
+import { StarRating, Avatar, ProgressBar, STATUS_LABELS, STATUS_COLORS } from "../components/ui";
+import { THEMES } from "../theme";
+
+export default function Profile() {
+  const { id }  = useParams();
+  const { C, theme, updateTheme } = useTheme();
+  const { user, login } = useAuth();
+
+  const [member,  setMember]  = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [form,    setForm]    = useState({ display_name:"", bio:"", theme:"dark-purple" });
+
+  const isMe = user?.id === id;
+
+  useEffect(() => {
+    api.getMember(id)
+      .then(m => { setMember(m); setForm({ display_name:m.display_name||"", bio:m.bio||"", theme:m.theme||"dark-purple" }); })
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  const save = async () => {
+    const updated = await api.updateMe(form);
+    setMember(m => ({ ...m, ...updated }));
+    setEditing(false);
+    if (form.theme !== theme) updateTheme(form.theme);
+  };
+
+  const INP = { width:"100%", background:C.bg, border:`1px solid ${C.border}`, borderRadius:3, color:C.text, fontFamily:"'EB Garamond',serif", fontSize:15, padding:"8px 12px", outline:"none", boxSizing:"border-box" };
+
+  if (loading) return <div style={{ textAlign:"center", padding:80, color:C.dimmer, fontStyle:"italic" }}>Loading…</div>;
+  if (!member) return <div style={{ textAlign:"center", padding:80, color:C.dimmer }}>Member not found</div>;
+
+  const finished = (member.progress||[]).filter(p=>p.status==="finished").length;
+  const reading  = (member.progress||[]).filter(p=>p.status==="reading").length;
+  const avgRating = member.reviews?.length
+    ? (member.reviews.reduce((s,r)=>s+r.rating,0)/member.reviews.length).toFixed(1)
+    : "—";
+
+  return (
+    <div style={{ maxWidth:720, margin:"0 auto", padding:"32px 24px" }}>
+      {/* Header card */}
+      <div style={{ background:`linear-gradient(160deg,${C.card},${C.card2})`, border:`1px solid ${C.border}`, borderRadius:8, padding:"28px 24px", marginBottom:20, display:"flex", gap:20, alignItems:"flex-start", flexWrap:"wrap" }}>
+        <Avatar name={member.display_name||member.username} src={member.avatar_url} size={72} />
+        <div style={{ flex:1, minWidth:0 }}>
+          {editing ? (
+            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+              <div>
+                <label style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, display:"block", marginBottom:4 }}>DISPLAY NAME</label>
+                <input value={form.display_name} onChange={e=>setForm(f=>({...f,display_name:e.target.value}))} style={INP} />
+              </div>
+              <div>
+                <label style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, display:"block", marginBottom:4 }}>BIO</label>
+                <textarea value={form.bio} onChange={e=>setForm(f=>({...f,bio:e.target.value}))} rows={3} style={{...INP,resize:"vertical"}} placeholder="Tell the club about yourself…" />
+              </div>
+              <div>
+                <label style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, display:"block", marginBottom:6 }}>THEME</label>
+                <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                  {Object.entries(THEMES).map(([k,v]) => (
+                    <button key={k} onClick={()=>setForm(f=>({...f,theme:k}))}
+                      style={{ background:form.theme===k?v.accent2+"44":"transparent", border:`2px solid ${form.theme===k?v.accent2:C.border}`, borderRadius:6, color:form.theme===k?v.accent2:C.dim, fontFamily:"monospace", fontSize:11, padding:"5px 12px", cursor:"pointer", display:"flex", alignItems:"center", gap:6 }}>
+                      <span style={{ width:10, height:10, borderRadius:"50%", background:v.accent, display:"inline-block" }} />
+                      {v.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ display:"flex", gap:8, marginTop:4 }}>
+                <button onClick={save} style={{ background:C.accent2, border:"none", borderRadius:3, color:C.bg, fontFamily:"'Playfair Display',serif", fontSize:13, fontWeight:700, padding:"7px 16px", cursor:"pointer" }}>Save</button>
+                <button onClick={()=>setEditing(false)} style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:3, color:C.dim, fontFamily:"monospace", fontSize:12, padding:"7px 12px", cursor:"pointer" }}>Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div style={{ fontFamily:"'Playfair Display',serif", fontSize:24, color:C.text, fontWeight:700 }}>{member.display_name||member.username}</div>
+              {member.is_admin && <span style={{ fontFamily:"monospace", fontSize:11, color:C.accent, background:C.accent+"22", padding:"2px 8px", borderRadius:10 }}>✦ Admin</span>}
+              {member.bio && <p style={{ fontFamily:"'EB Garamond',serif", fontSize:15, color:C.muted, fontStyle:"italic", marginTop:8, lineHeight:1.6 }}>{member.bio}</p>}
+              <div style={{ marginTop:12, display:"flex", gap:16, flexWrap:"wrap" }}>
+                {[["Books Finished", finished], ["Currently Reading", reading], ["Reviews", member.reviews?.length||0], ["Avg Rating", avgRating]].map(([l,v]) => (
+                  <div key={l} style={{ textAlign:"center" }}>
+                    <div style={{ fontFamily:"'Playfair Display',serif", fontSize:22, color:C.accent, fontWeight:700 }}>{v}</div>
+                    <div style={{ fontFamily:"monospace", fontSize:10, color:C.dimmer }}>{l}</div>
+                  </div>
+                ))}
+              </div>
+              {isMe && <button onClick={()=>setEditing(true)} style={{ marginTop:12, background:"transparent", border:`1px solid ${C.border}`, borderRadius:3, color:C.dim, fontFamily:"monospace", fontSize:12, padding:"6px 12px", cursor:"pointer" }}>Edit profile</button>}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Reviews */}
+      {member.reviews?.length > 0 && (
+        <div style={{ marginBottom:20 }}>
+          <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, letterSpacing:1, marginBottom:12 }}>RECENT REVIEWS</div>
+          <div style={{ display:"grid", gap:10 }}>
+            {member.reviews.slice(0,8).map(r => (
+              <div key={r.id} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:6, padding:"14px 16px", display:"flex", gap:14, alignItems:"flex-start" }}>
+                {r.cover_url && <img src={r.cover_url} alt="" style={{ width:40, height:56, objectFit:"cover", borderRadius:3, flexShrink:0 }} />}
+                <div style={{ flex:1 }}>
+                  <div style={{ fontFamily:"'Playfair Display',serif", fontSize:15, color:C.text, fontWeight:700 }}>{r.book_title}</div>
+                  <div style={{ fontFamily:"'EB Garamond',serif", fontSize:13, color:C.muted, fontStyle:"italic", marginBottom:4 }}>{r.book_author}</div>
+                  <StarRating value={r.rating} size={14} />
+                  {r.notes && <p style={{ fontFamily:"'EB Garamond',serif", fontSize:14, color:C.muted, fontStyle:"italic", marginTop:4, lineHeight:1.5 }}>"{r.notes}"</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Reading progress */}
+      {member.progress?.filter(p=>p.status!=="want_to_read").length > 0 && (
+        <div>
+          <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, letterSpacing:1, marginBottom:12 }}>READING PROGRESS</div>
+          <div style={{ display:"grid", gap:8 }}>
+            {member.progress.filter(p=>p.status!=="want_to_read").map(p => (
+              <div key={p.id} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:6, padding:"12px 16px" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <div style={{ fontFamily:"'Playfair Display',serif", fontSize:14, color:C.text }}>{p.book_title}</div>
+                  <span style={{ fontFamily:"monospace", fontSize:11, color:STATUS_COLORS[p.status] }}>{STATUS_LABELS[p.status]}</span>
+                </div>
+                {p.status==="reading" && p.total_pages && (
+                  <>
+                    <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, marginTop:4 }}>p.{p.current_page} of {p.total_pages}</div>
+                    <ProgressBar current={p.current_page} total={p.total_pages} color={C.accent} />
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
