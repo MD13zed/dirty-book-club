@@ -1,94 +1,116 @@
-# 🔥 Dirty Book Club v2 — Vercel Edition
+# 🔥 Dirty Book Club
 
-Fully free, no credit card needed, no expiry.
-
-| Service | What it does | Free limit |
-|---|---|---|
-| **Vercel** | Hosts frontend + backend | Unlimited hobby projects |
-| **Neon** | PostgreSQL database | 0.5GB, never pauses |
-| **Cloudinary** | Book cover image storage | 25GB, 25GB bandwidth/month |
-| **Discord** | OAuth login | Free |
+A private, invite-only book tracking app for your spicy reading group. Built with React + Vite on the frontend and Node/Express on the backend, with Discord OAuth for authentication.
 
 ---
 
-## Quick deploy (30 min total)
+## What It Does
 
-### 1. Neon — free database
-1. Go to **neon.tech** → Sign up (GitHub login works)
-2. Create a project → name it `dirty-book-club`
-3. Go to **SQL Editor** → paste the entire contents of `backend/db/schema.sql` → Run
-4. Go to **Dashboard** → **Connection Details** → copy the **Connection string** (looks like `postgresql://...`)
+- Login with Discord — no passwords, no accounts to manage
+- Track books your club has read with covers, genres, and dates
+- Rate and review books privately within your group
+- Track reading progress per member
+- Admin panel to manage members and content
+- 60+ genre and trope tags including smut subgenres
+- Dark purple aesthetic because of course
 
-### 2. Cloudinary — free image hosting
-1. Go to **cloudinary.com** → Sign up free
-2. From the Dashboard copy: **Cloud name**, **API Key**, **API Secret**
+---
 
-### 3. Discord — OAuth app
-1. Go to **discord.com/developers/applications** → New Application
-2. Left sidebar → **OAuth2** → Add Redirect:
-   `https://YOUR-APP-NAME.vercel.app/auth/discord/callback`
-   (Use a placeholder for now — you'll update it after Vercel deploy)
-3. Copy **Client ID** and **Client Secret**
+## Tech Stack
 
-### 4. GitHub — push the code
-```bash
-git init
-git add .
-git commit -m "Dirty Book Club v2"
-# Create a repo on github.com, then:
-git remote add origin https://github.com/YOURNAME/dirty-book-club.git
-git push -u origin main
+| Layer | Tech |
+|---|---|
+| Frontend | React, Vite, React Router |
+| Backend | Node.js, Express |
+| Database | Neon (PostgreSQL) |
+| Auth | Discord OAuth2 + JWT |
+| Image Storage | Cloudinary |
+| Hosting | Vercel (two deployments — frontend + backend) |
+
+---
+
+## Project Structure
+
+```
+dbc/
+├── frontend/          # React + Vite app
+│   ├── src/
+│   │   ├── components/   # Navbar, BookCard, BookModal, UI primitives
+│   │   ├── pages/        # Login, Library, Profile, Admin, LoginSuccess
+│   │   ├── App.jsx       # Routing + auth context
+│   │   ├── api.js        # All backend API calls
+│   │   └── theme.js      # Color themes
+│   └── vercel.json       # SPA routing fix for Vercel
+└── backend/           # Express API
+    ├── db/
+    │   ├── pool.js       # PostgreSQL connection
+    │   └── schema.sql    # Database schema (run once in Neon)
+    ├── middleware/
+    │   └── auth.js       # JWT middleware
+    ├── routes/           # auth, books, reviews, progress, members, admin, uploads
+    ├── server.js         # Entry point
+    └── vercel.json       # Vercel serverless config
 ```
 
-### 5. Vercel — deploy
-1. Go to **vercel.com** → Sign up with GitHub (free)
-2. Click **Add New Project** → import your `dirty-book-club` repo
-3. Vercel auto-detects the config. Before clicking Deploy, click **Environment Variables** and add ALL of these:
+---
 
-| Key | Value |
+## Environment Variables
+
+### Backend (Vercel)
+
+| Variable | Description |
 |---|---|
-| `DATABASE_URL` | Your Neon connection string |
-| `JWT_SECRET` | Any long random string (64+ chars) |
-| `DISCORD_CLIENT_ID` | From Discord developer portal |
-| `DISCORD_CLIENT_SECRET` | From Discord developer portal |
-| `DISCORD_REDIRECT_URI` | `https://YOUR-APP.vercel.app/auth/discord/callback` |
+| `DATABASE_URL` | Neon PostgreSQL connection string |
+| `JWT_SECRET` | Random 64-character string |
+| `DISCORD_CLIENT_ID` | From Discord Developer Portal |
+| `DISCORD_CLIENT_SECRET` | From Discord Developer Portal |
+| `DISCORD_REDIRECT_URI` | `https://your-backend.vercel.app/auth/discord/callback` |
 | `CLOUDINARY_CLOUD_NAME` | From Cloudinary dashboard |
 | `CLOUDINARY_API_KEY` | From Cloudinary dashboard |
 | `CLOUDINARY_API_SECRET` | From Cloudinary dashboard |
-| `FRONTEND_URL` | `https://YOUR-APP.vercel.app` |
-| `API_URL` | `https://YOUR-APP.vercel.app` |
+| `FRONTEND_URL` | Your frontend Vercel URL |
+| `API_URL` | Your backend Vercel URL |
 
-4. Click **Deploy** — takes ~2 minutes
+### Frontend (Vercel)
 
-### 6. Update Discord redirect URI
-After deploy you know your real Vercel URL. Go back to Discord developer portal → OAuth2 → update the redirect URI to match exactly.
-
-### 7. Make yourself admin
-1. Open your app, click **Login with Discord** — this creates your account
-2. Go to Neon → **SQL Editor**, run:
-```sql
-UPDATE members SET is_admin = TRUE WHERE discord_id = 'YOUR_DISCORD_USER_ID';
-```
-*(Get your Discord ID: Discord → Settings → Advanced → Developer Mode ON → right-click your name → Copy User ID)*
+| Variable | Description |
+|---|---|
+| `VITE_API_URL` | Your backend Vercel URL (no trailing slash) |
 
 ---
 
-## Updating the app later
-Just push to GitHub — Vercel auto-deploys every push to `main`.
+## Making Someone Admin
+
+1. They log in with Discord first (creates their account)
+2. Get their Discord ID: Discord → Settings → Advanced → Developer Mode ON → right-click their name → Copy User ID
+3. Run in Neon SQL Editor:
+
+```sql
+UPDATE members SET is_admin = TRUE WHERE discord_id = 'THEIR_DISCORD_ID';
+```
+
+---
+
+## Adding or Editing Genres
+
+Genres are defined in `frontend/src/components/ui.jsx` in the `GENRES` array and `GENRE_COLORS` object. Add a new genre to the array and give it a hex color in the colors object, then push.
+
+---
+
+## Deploying Updates
+
+Every update is just three commands from inside the `dbc` folder:
 
 ```bash
 git add .
-git commit -m "Update"
-git push
+git commit -m "describe what you changed"
+git push origin main
 ```
 
-## Local development
-```bash
-# Terminal 1 — backend
-cp backend/.env.example backend/.env  # fill in your values
-npm install
-node backend/server.js
+Vercel auto-deploys both the frontend and backend on every push. Takes about 1-2 minutes.
 
-# Terminal 2 — frontend
-cd frontend && npm install && npm run dev
-```
+---
+
+## First Time Setup
+
+See the full setup guide for step-by-step instructions covering Neon, Cloudinary, Discord OAuth, GitHub, and Vercel deployment.
