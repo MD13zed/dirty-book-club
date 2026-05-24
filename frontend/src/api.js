@@ -61,7 +61,7 @@ export const api = {
   toggleAdmin:       (id, v)      => req("PATCH",  `/admin/members/${id}/admin`, { is_admin: v }),
   adminDeleteMember: (id)         => req("DELETE", `/admin/members/${id}`),
   adminDeleteBook:   (id)         => req("DELETE", `/admin/books/${id}`),
-  setBookOfTheMonth: (book_id, month) => req("POST", "/admin/botm", { book_id, month }),
+  setBookOfTheMonth: (book_id, month, announce = true) => req("POST", "/admin/botm", { book_id, month, announce }),
   postTbrPoll:       (book_ids, duration_hours) => req("POST", "/admin/tbr-poll", { book_ids, duration_hours }),
 
   // Upload
