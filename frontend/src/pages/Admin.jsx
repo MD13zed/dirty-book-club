@@ -11,9 +11,10 @@ export default function Admin() {
   const [noms,    setNoms]    = useState([]);
   const [tab,     setTab]     = useState("stats");
 
-  const [botmBookId, setBotmBookId] = useState("");
-  const [botmMonth,  setBotmMonth]  = useState("");
-  const [botmStatus, setBotmStatus] = useState("");
+  const [botmBookId,        setBotmBookId]        = useState("");
+  const [botmMonth,         setBotmMonth]          = useState("");
+  const [botmStatus,        setBotmStatus]         = useState("");
+  const [announceToDiscord, setAnnounceToDiscord]  = useState(true);
 
   const [pollSelected,  setPollSelected]  = useState([]);
   const [pollDuration,  setPollDuration]  = useState(48);
@@ -40,9 +41,9 @@ export default function Admin() {
   const announceBotm = async () => {
     if (!botmBookId || !botmMonth.trim()) { setBotmStatus("Please select a book and enter a month."); return; }
     try {
-      setBotmStatus("Announcing...");
-      await api.setBookOfTheMonth(botmBookId, botmMonth.trim());
-      setBotmStatus("✅ Announced and thread created in Discord!");
+      setBotmStatus(announceToDiscord ? "Announcing..." : "Saving...");
+      await api.setBookOfTheMonth(botmBookId, botmMonth.trim(), announceToDiscord);
+      setBotmStatus(announceToDiscord ? "✅ Announced and thread created in Discord!" : "✅ Saved!");
       setBotmBookId(""); setBotmMonth("");
       api.getBooks().then(setBooks);
     } catch (e) { setBotmStatus("❌ Error: " + e.message); }
@@ -210,14 +211,21 @@ export default function Admin() {
                 const b = books.find(x=>x.id===botmBookId);
                 return b ? (
                   <div style={{ background:C.bg, border:`1px solid #d4af3744`, borderRadius:4, padding:"12px 16px" }}>
-                    <div style={{ fontFamily:"monospace", fontSize:10, color:"#d4af37", marginBottom:6 }}>THREAD WILL BE CREATED:</div>
+                    <div style={{ fontFamily:"monospace", fontSize:10, color:"#d4af37", marginBottom:6 }}>
+                      {announceToDiscord ? "THREAD WILL BE CREATED:" : "WILL BE SAVED AS BOTM:"}
+                    </div>
                     <div style={{ fontFamily:"monospace", fontSize:12, color:C.text }}>📔 {botmMonth} 📖 {b.title}</div>
                   </div>
                 ) : null;
               })()}
+              <label style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer" }}>
+                <input type="checkbox" checked={announceToDiscord} onChange={e=>setAnnounceToDiscord(e.target.checked)}
+                  style={{ width:14, height:14, accentColor:"#d4af37", cursor:"pointer" }} />
+                <span style={{ fontFamily:"monospace", fontSize:12, color:C.dimmer }}>Post announcement to Discord</span>
+              </label>
               <button onClick={announceBotm}
                 style={{ background:"linear-gradient(90deg,#b8860b,#d4af37)", border:"none", borderRadius:4, color:"#1a1000", fontFamily:"monospace", fontSize:13, fontWeight:700, padding:"12px 24px", cursor:"pointer", letterSpacing:1 }}>
-                🔥 ANNOUNCE & CREATE THREAD
+                {announceToDiscord ? "🔥 ANNOUNCE & CREATE THREAD" : "💾 SAVE BOOK OF THE MONTH"}
               </button>
               {botmStatus && <div style={{ fontFamily:"monospace", fontSize:12, color:botmStatus.startsWith("✅")?"#60a080":botmStatus.startsWith("❌")?"#c05070":C.dimmer }}>{botmStatus}</div>}
             </div>
@@ -240,7 +248,6 @@ export default function Admin() {
       {/* ── NOMINATIONS ── */}
       {tab==="noms" && (
         <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
-          {/* TBR Poll */}
           <div style={{ background:C.card, border:`1px solid ${C.accent2}44`, borderRadius:6, padding:"24px 28px" }}>
             <div style={{ fontFamily:"monospace", fontSize:11, color:C.accent2, letterSpacing:1, marginBottom:6 }}>POST TBR POLL TO DISCORD</div>
             <div style={{ fontFamily:"'EB Garamond',serif", fontSize:14, color:C.dimmer, fontStyle:"italic", marginBottom:16 }}>
@@ -277,7 +284,6 @@ export default function Admin() {
             {pollStatus && <div style={{ marginTop:10, fontFamily:"monospace", fontSize:12, color:pollStatus.startsWith("✅")?"#60a080":pollStatus.startsWith("❌")?"#c05070":C.dimmer }}>{pollStatus}</div>}
           </div>
 
-          {/* All nominations list */}
           <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:6, padding:"18px 20px" }}>
             <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, letterSpacing:1, marginBottom:14 }}>ALL NOMINATIONS</div>
             {noms.length===0 && <div style={{ color:C.dimmer, fontStyle:"italic", fontSize:14 }}>No nominations yet</div>}
