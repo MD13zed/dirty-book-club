@@ -15,11 +15,11 @@ All notable changes to The Spicy Shelf are documented here.
   - Progress bar shows which book is being imported
   - Genres and trigger warnings can be added to imported books afterwards
   - Imports: title, author, page count, date read, cover (via ISBN lookup)
+- **`/getting-started` Discord command** — sends a full guide to everything members can do on The Spicy Shelf. Ephemeral (only visible to the person who ran it) so it doesn't spam the channel. Useful to point new members to the moment they join the server.
 
 ### Notes
-- Both features are entirely frontend — no backend changes, no new environment variables, no dependencies added.
-- Open Library is called directly from the browser; no API key required.
-- To export from Goodreads: My Books → Import/Export → Export Library → download `goodreads_library_export.csv`
+- Open Library search prefill and Goodreads import are entirely frontend — no backend changes, no new environment variables, no dependencies added.
+- `/getting-started` requires re-running `node register-commands.js` from the backend directory after deploying.
 
 ---
 

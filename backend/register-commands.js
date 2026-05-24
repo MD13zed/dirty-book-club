@@ -90,6 +90,10 @@ const commands = [
     name:        "leaderboard",
     description: "See who has read the most books and left the most reviews 🏅",
   },
+  {
+    name:        "getting-started",
+    description: "A full guide to everything you can do on The Spicy Shelf 🔥",
+  },
 ];
 
 const path = GUILD

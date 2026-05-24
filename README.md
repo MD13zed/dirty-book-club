@@ -65,7 +65,7 @@ A private book club library for tracking, reviewing, and discussing reads togeth
 ### Themes
 6 dark themes per member: Dark Purple, Midnight, Rose Gold, Dark Forest, Deep Ocean, Blood Moon
 
-### Discord Bot — 9 Slash Commands
+### Discord Bot — 10 Slash Commands
 
 | Command | What it does |
 |---|---|
@@ -78,6 +78,7 @@ A private book club library for tracking, reviewing, and discussing reads togeth
 | `/myshelf` | See your full reading list, filterable by status |
 | `/nominations` | See the current nomination shortlist with vote counts |
 | `/leaderboard` | Who has read the most books and left the most reviews |
+| `/getting-started` | Full guide to everything you can do — only visible to you |
 
 ### Mobile
 Installable as a PWA on iOS (Safari → Add to Home Screen) and Android (Chrome → Add to Home Screen)

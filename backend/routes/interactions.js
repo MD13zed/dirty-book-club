@@ -293,6 +293,83 @@ async function handleLeaderboard(res) {
   return res.json(reply([embed("🏅 Reading Leaderboard", `[View profiles](${SITE_URL})`, color.gold, fields)]));
 }
 
+// ── Getting started guide ─────────────────────────────────────────────────────
+function handleGettingStarted(res) {
+  const fields = [
+    {
+      name:  "🚀 Getting started",
+      value: [
+        `**1.** Log in at ${SITE_URL} with your Discord — no account needed`,
+        "**2.** Set up your profile — display name, bio, and colour theme",
+        "**3.** Start tracking books, leaving reviews, and joining the conversation",
+      ].join("\n"),
+      inline: false,
+    },
+    {
+      name:  "📚 The library",
+      value: [
+        "**Add books** — search to auto-fill title, author, cover & page count from Open Library",
+        "**Import from Goodreads** — upload your export CSV to bulk-import your entire read shelf (covers fetched automatically)",
+        "**Genres & trigger warnings** — tag books with up to 5 genres from 100+ options",
+        "**Filter & sort** — by genre, reading status, rating, date read, or search by title/author",
+      ].join("\n"),
+      inline: false,
+    },
+    {
+      name:  "📖 Reading progress",
+      value: [
+        "Mark any book as **Want to Read**, **Currently Reading**, **Finished**, or **DNF**",
+        "Log your current page — a progress bar fills automatically when total pages are set",
+        "Leave a DNF note so the club knows why you stopped",
+      ].join("\n"),
+      inline: false,
+    },
+    {
+      name:  "⭐ Reviews",
+      value: [
+        "Rate books 1–5 stars and leave written notes",
+        "Club average rating shown on every book card",
+        "Filter your reviews by star rating on your profile page",
+      ].join("\n"),
+      inline: false,
+    },
+    {
+      name:  "🗳 Nominations & voting",
+      value: [
+        "Nominate any library book for next month's pick — button inside each card",
+        "Upvote your favourites (one vote per member)",
+        "Use `/nominations` to see the current shortlist with vote counts",
+      ].join("\n"),
+      inline: false,
+    },
+    {
+      name:  "🤖 Useful bot commands",
+      value: [
+        "`/myshelf` — your full reading list",
+        "`/review` — rate a book without opening the app",
+        "`/reading` — update your progress from Discord",
+        "`/nominations` — current shortlist with vote counts",
+        "`/botm` — this month's Book of the Month",
+        "`/leaderboard` — who's read the most",
+        "`/stats` — club-wide reading stats",
+      ].join("\n"),
+      inline: false,
+    },
+    {
+      name:  "📱 Install as an app",
+      value: "Open the site in **Safari on iOS** or **Chrome on Android** → Add to Home Screen for a native app experience.",
+      inline: false,
+    },
+  ];
+
+  return res.json(reply([embed(
+    "🔥 Welcome to The Spicy Shelf",
+    `Everything you can do on [thespicyshelf.vercel.app](${SITE_URL})`,
+    color.purple,
+    fields,
+  )], true)); // ephemeral — only the person who ran it sees it
+}
+
 // ── Router ────────────────────────────────────────────────────────────────────
 router.post("/", verify, async (req, res) => {
   try {
@@ -312,8 +389,9 @@ router.post("/", verify, async (req, res) => {
         case "reading":      return await handleReading(res, options, discordId);
         case "myshelf":      return await handleMyShelf(res, options, discordId);
         case "nominations":  return await handleNominations(res);
-        case "leaderboard":  return await handleLeaderboard(res);
-        default:             return res.json(err("Unknown command."));
+        case "leaderboard":      return await handleLeaderboard(res);
+        case "getting-started":  return handleGettingStarted(res);
+        default:                 return res.json(err("Unknown command."));
       }
     }
   } catch (e) {
