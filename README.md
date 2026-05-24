@@ -10,6 +10,8 @@ A private book club library for tracking, reviewing, and discussing reads togeth
 
 ### Library
 - Add books with title, author, series, cover image, date read, total pages
+- **Search to pre-fill** — type a title or author to look up book details from Open Library automatically. Fills in title, author, cover, and page count in one click.
+- **Import from Goodreads** — upload your Goodreads library export CSV to bulk-import your read books. Covers fetched automatically via ISBN. Available to all members.
 - Up to **5 genres** per book from a list of 100+
 - **Trigger warnings** — optional tags shown as a collapsed toggle on book cards
 - All book cards are uniform size — books without covers show a styled placeholder
@@ -163,6 +165,20 @@ Re-run whenever new commands are added.
 
 ---
 
+## Importing from Goodreads
+
+Any member can import their read books from a Goodreads library export:
+
+1. In Goodreads go to **My Books → Import/Export → Export Library** and download the CSV
+2. In the app click **📥 Import from Goodreads** in the library header
+3. Upload the CSV — only books from your "Read" shelf are shown
+4. Deselect any books you don't want to import
+5. Click Import — covers are fetched automatically using the ISBN
+
+Genres and trigger warnings can be added to imported books by clicking into them afterwards.
+
+---
+
 ## Deploying Updates
 
 ```bash
@@ -183,3 +199,4 @@ Vercel auto-deploys both frontend and backend on every push.
 | Neon | PostgreSQL database | 0.5GB, never pauses |
 | Cloudinary | Book cover image storage | 25GB storage, 25GB bandwidth/month |
 | Discord | OAuth login + bot + webhooks | Free |
+| Open Library | Book metadata + cover lookup | Free, no API key needed |

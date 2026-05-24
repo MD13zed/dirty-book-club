@@ -4,6 +4,25 @@ All notable changes to The Spicy Shelf are documented here.
 
 ---
 
+## [3.2.0] — 2026-05-24
+
+### Added
+- **Open Library search prefill** — when adding a book, type a title or author in the new "Search to pre-fill" field to look up details automatically. Results appear in a dropdown with cover thumbnails; selecting one fills in the title, author, cover URL, and page count instantly.
+- **Goodreads CSV import** — members can import their read books directly from a Goodreads library export. Available to all members via the "📥 Import from Goodreads" button in the library header.
+  - Only imports books from the "Read" shelf — to-read and currently-reading are skipped
+  - Preview screen lets members deselect any books before importing
+  - Covers are automatically fetched from Open Library using the ISBN from the export
+  - Progress bar shows which book is being imported
+  - Genres and trigger warnings can be added to imported books afterwards
+  - Imports: title, author, page count, date read, cover (via ISBN lookup)
+
+### Notes
+- Both features are entirely frontend — no backend changes, no new environment variables, no dependencies added.
+- Open Library is called directly from the browser; no API key required.
+- To export from Goodreads: My Books → Import/Export → Export Library → download `goodreads_library_export.csv`
+
+---
+
 ## [3.1.0] — 2026-05-24
 
 ### Fixed
