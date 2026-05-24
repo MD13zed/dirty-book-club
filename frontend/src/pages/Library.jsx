@@ -73,6 +73,9 @@ export default function Library() {
     setNoms(updated);
   };
 
+  const myProgressMap = {};
+  progress.forEach(p => { myProgressMap[p.book_id] = p; });
+
   const filtered = books
     .filter(b => {
       const q = search.toLowerCase();
@@ -89,8 +92,6 @@ export default function Library() {
       return new Date(b.added_at)-new Date(a.added_at);
     });
 
-  const myProgressMap = {};
-  progress.forEach(p => { myProgressMap[p.book_id] = p; });
 
   const nominatedBookIds = new Set(noms.map(n => n.book_id));
   const activeGenres = GENRES.filter(g => books.some(b => (b.genres||[]).includes(g)));
@@ -173,21 +174,6 @@ export default function Library() {
           )}
 
 
-          {/* Reading status filter */}
-          <div style={{ display:"flex", gap:6, padding:"10px 24px", borderBottom:`1px solid ${C.border2}`, flexWrap:"wrap" }}>
-            {[
-              { value:"", label:"All Books" },
-              { value:"reading",      label:"📖 Reading" },
-              { value:"finished",     label:"✅ Finished" },
-              { value:"want_to_read", label:"📚 Want to Read" },
-              { value:"dnf",          label:"💀 DNF" },
-            ].map(s => (
-              <button key={s.value} onClick={()=>setStatusFilter(s.value)}
-                style={{ background:statusFilter===s.value?C.accent2+"44":"transparent", border:`1px solid ${statusFilter===s.value?C.accent2:C.border}`, borderRadius:20, color:statusFilter===s.value?C.accent2:C.dim, fontFamily:"monospace", fontSize:11, padding:"4px 12px", cursor:"pointer", transition:"all 0.15s" }}>
-                {s.label}
-              </button>
-            ))}
-          </div>
 
           {/* Filters */}
           <div style={{ padding:"12px 24px", display:"flex", gap:10, flexWrap:"wrap", borderBottom:`1px solid ${C.border2}` }}>
@@ -199,6 +185,13 @@ export default function Library() {
             </select>
             <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{ background:C.vdark, border:`1px solid ${C.border}`, borderRadius:3, color:C.dim, fontFamily:"monospace", fontSize:12, padding:"7px 10px", outline:"none" }}>
               {SORTS.map(s=><option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+            <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{ background:C.vdark, border:`1px solid ${C.border}`, borderRadius:3, color:statusFilter?C.accent:C.dim, fontFamily:"monospace", fontSize:12, padding:"7px 10px", outline:"none" }}>
+              <option value="">All Statuses</option>
+              <option value="reading">📖 Reading</option>
+              <option value="finished">✅ Finished</option>
+              <option value="want_to_read">📚 Want to Read</option>
+              <option value="dnf">💀 DNF</option>
             </select>
           </div>
 
