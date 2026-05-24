@@ -295,79 +295,91 @@ async function handleLeaderboard(res) {
 
 // ── Getting started guide ─────────────────────────────────────────────────────
 function handleGettingStarted(res) {
-  const fields = [
-    {
-      name:  "🚀 Getting started",
-      value: [
-        `**1.** Log in at ${SITE_URL} with your Discord — no account needed`,
-        "**2.** Set up your profile — display name, bio, and colour theme",
-        "**3.** Start tracking books, leaving reviews, and joining the conversation",
-      ].join("\n"),
-      inline: false,
-    },
-    {
-      name:  "📚 The library",
-      value: [
-        "**Add books** — search to auto-fill title, author, cover & page count from Open Library",
-        "**Import from Goodreads** — upload your export CSV to bulk-import your entire read shelf (covers fetched automatically)",
-        "**Genres & trigger warnings** — tag books with up to 5 genres from 100+ options",
-        "**Filter & sort** — by genre, reading status, rating, date read, or search by title/author",
-      ].join("\n"),
-      inline: false,
-    },
-    {
-      name:  "📖 Reading progress",
-      value: [
-        "Mark any book as **Want to Read**, **Currently Reading**, **Finished**, or **DNF**",
-        "Log your current page — a progress bar fills automatically when total pages are set",
-        "Leave a DNF note so the club knows why you stopped",
-      ].join("\n"),
-      inline: false,
-    },
-    {
-      name:  "⭐ Reviews",
-      value: [
-        "Rate books 1–5 stars and leave written notes",
-        "Club average rating shown on every book card",
-        "Filter your reviews by star rating on your profile page",
-      ].join("\n"),
-      inline: false,
-    },
-    {
-      name:  "🗳 Nominations & voting",
-      value: [
-        "Nominate any library book for next month's pick — button inside each card",
-        "Upvote your favourites (one vote per member)",
-        "Use `/nominations` to see the current shortlist with vote counts",
-      ].join("\n"),
-      inline: false,
-    },
-    {
-      name:  "🤖 Useful bot commands",
-      value: [
-        "`/myshelf` — your full reading list",
-        "`/review` — rate a book without opening the app",
-        "`/reading` — update your progress from Discord",
-        "`/nominations` — current shortlist with vote counts",
-        "`/botm` — this month's Book of the Month",
-        "`/leaderboard` — who's read the most",
-        "`/stats` — club-wide reading stats",
-      ].join("\n"),
-      inline: false,
-    },
-    {
-      name:  "📱 Install as an app",
-      value: "Open the site in **Safari on iOS** or **Chrome on Android** → Add to Home Screen for a native app experience.",
-      inline: false,
-    },
-  ];
-
-  return res.json(reply([embed(
+  const embed1 = embed(
     "🔥 Welcome to The Spicy Shelf",
-    `Everything you can do on [thespicyshelf.vercel.app](${SITE_URL})`,
+    `Everything you can do on [thespicyshelf.vercel.app](${SITE_URL}) — a quick guide to getting the most out of the app.`,
     color.purple,
-    fields,
-  )], true)); // ephemeral — only the person who ran it sees it
+    [
+      {
+        name:  "🚀 Getting started",
+        value: [
+          `**1.** Log in with Discord — no account to create, just your existing Discord. Your username and avatar sync automatically.`,
+          `**2.** Set up your profile — click your avatar in the top right to add a display name, bio, and pick a colour theme. Six dark themes available.`,
+          `**3.** Start tracking — add books, leave reviews, and mark your reading progress. Everything syncs in real time across the whole club.`,
+        ].join("\n"),
+        inline: false,
+      },
+      {
+        name:  "📚 The library",
+        value: [
+          "**Add books** — search to pre-fill title, author, cover & page count from Open Library automatically",
+          "**Goodreads import** — upload your export CSV to bulk-import your entire read shelf, covers fetched automatically by ISBN",
+          "**Genres & trigger warnings** — up to 5 genres per book from 100+ tags, TW collapsed behind a toggle on each card",
+          "**Filter & sort** — by genre, reading status, rating, date read, or search by title/author/series",
+          "",
+          "> To import from Goodreads: **My Books → Import/Export → Export Library**, then click **Import from Goodreads** in the library header and upload the CSV.",
+        ].join("\n"),
+        inline: false,
+      },
+      {
+        name:  "📖 Reading progress",
+        value: [
+          "Set a status for any book — **Want to Read**, **Currently Reading**, **Finished**, or **Did Not Finish**.",
+          "Log your current page and watch the progress bar fill automatically when total pages are set.",
+          "Leave a DNF note so the club knows why you stopped — shown on your profile.",
+        ].join(" "),
+        inline: false,
+      },
+      {
+        name:  "⭐ Reviews & ratings",
+        value: "Leave a star rating (1–5) and written notes on any book. The club average appears on every book card. Member avatars show who has reviewed — click any reviewer's name to visit their profile. Filter your own reviews by star rating on your profile page.",
+        inline: false,
+      },
+      {
+        name:  "🗳 Nominations & voting",
+        value: [
+          "Nominate any library book for next month's pick using the button inside each card.",
+          "One upvote per member per nomination — vote counts shown on the nominations tab in the library.",
+        ].join(" "),
+        inline: false,
+      },
+    ],
+  );
+
+  const embed2 = embed(
+    "🤖 Discord bot commands",
+    "Use these slash commands directly in the server — no need to open the app.",
+    color.indigo,
+    [
+      {
+        name:  "Commands",
+        value: [
+          "`/shelf` — the 5 most recently added books",
+          "`/botm` — current Book of the Month",
+          "`/search` — search the library by title",
+          "`/review` — submit or update a star rating and notes",
+          "`/reading` — update your reading status and page number",
+          "`/myshelf` — see your full reading list by status",
+          "`/nominations` — current shortlist with vote counts",
+          "`/leaderboard` — who has read the most and reviewed the most",
+          "`/stats` — club-wide reading statistics",
+        ].join("\n"),
+        inline: false,
+      },
+      {
+        name:  "👤 Your profile",
+        value: "Your profile shows your reading stats, all your reviews (filterable by star rating), and your full progress list with any DNF notes. Edit your display name, bio, and colour theme any time.",
+        inline: false,
+      },
+      {
+        name:  "📱 Install as an app",
+        value: "Open the site in **Safari on iOS** or **Chrome on Android** → Add to Home Screen for a native app experience.",
+        inline: false,
+      },
+    ],
+  );
+
+  return res.json({ type:4, data:{ embeds:[embed1, embed2], flags:64 } }); // ephemeral
 }
 
 // ── Router ────────────────────────────────────────────────────────────────────
