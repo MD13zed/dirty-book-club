@@ -2,6 +2,7 @@ const router = require("express").Router();
 const { v4: uuidv4 } = require("uuid");
 const pool   = require("../db/pool");
 const { auth } = require("../middleware/auth");
+const { notifyBookAdded } = require("../discord");
 
 async function attachExtras(books) {
   if (!books.length) return books;
@@ -74,7 +75,7 @@ router.get("/:id", async (req, res) => {
 
 // POST /api/books
 router.post("/", auth, async (req, res) => {
-  const { title, author, series, cover_url, date_read, genres = [], trigger_warnings = [], total_pages } = req.body;
+  const { title, author, series, cover_url, date_read, genres = [], trigger_warnings = [], total_pages, silent = false } = req.body;
   if (!title?.trim()) return res.status(400).json({ error: "Title required" });
 
   const id = uuidv4();
@@ -91,6 +92,18 @@ router.post("/", auth, async (req, res) => {
       await pool.query("INSERT INTO book_tw (book_id,tag) VALUES ($1,$2) ON CONFLICT DO NOTHING", [id,t]);
     }
     const { rows: [book] } = await pool.query("SELECT * FROM books WHERE id=$1", [id]);
+
+    if (!silent) {
+      notifyBookAdded({
+        title:          book.title,
+        author:         book.author,
+        series:         book.series,
+        genres,
+        cover_url:      book.cover_url,
+        added_by_name:  req.user.display_name || req.user.username,
+      });
+    }
+
     res.status(201).json({ ...book, genres, trigger_warnings });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

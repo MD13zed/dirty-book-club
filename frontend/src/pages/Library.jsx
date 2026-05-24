@@ -55,16 +55,31 @@ function parseGoodreadsCSV(text) {
     return i >= 0 ? (row[i] || "").replace(/^=?"?|"?$/g, "").trim() : "";
   };
 
+  // Goodreads puts series info inside the title: "The Name of the Wind (The Kingkiller Chronicle, #1)"
+  // Extract it into a separate series field
+  function extractSeries(rawTitle) {
+    const match = rawTitle.match(/^(.+?)\s*\((.+?),?\s*#([\d.]+)\)\s*$/);
+    if (match) {
+      return {
+        title:  match[1].trim(),
+        series: `${match[2].trim()} #${match[3]}`,
+      };
+    }
+    return { title: rawTitle, series: "" };
+  }
+
   const books = [];
   for (let i = 1; i < lines.length; i++) {
     const row = parseRow(lines[i]);
     if (row.length < 3) continue;
 
     const shelf = col(row, "exclusive_shelf");
-    if (shelf !== "read") continue; // only import read books
+    if (shelf !== "read") continue;
 
-    const title = col(row, "title");
-    if (!title) continue;
+    const rawTitle = col(row, "title");
+    if (!rawTitle) continue;
+
+    const { title, series } = extractSeries(rawTitle);
 
     // Parse date — Goodreads exports as YYYY/MM/DD
     const rawDate = col(row, "date_read");
@@ -80,30 +95,34 @@ function parseGoodreadsCSV(text) {
 
     books.push({
       title,
+      series,
       author:      col(row, "author"),
       total_pages: parseInt(col(row, "number_of_pages")) || null,
       date_read:   date_read || null,
       isbn:        isbn13 || isbn || "",
-      // cover will be fetched via Open Library ISBN lookup
       cover_url:   "",
       genres:      [],
       trigger_warnings: [],
-      series:      "",
     });
   }
   return books;
 }
 
 // ── Cover fetch via ISBN ───────────────────────────────────────────────────
+// Uses Open Library Books API (returns JSON) to get the cover ID, then builds
+// the cover URL — avoids CORS issues with HEAD requests to covers.openlibrary.org
 async function fetchCoverByISBN(isbn) {
   if (!isbn) return "";
-  // Try Open Library cover API directly — no rate limits for individual lookups
-  const url = `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg?default=false`;
   try {
-    const res = await fetch(url, { method: "HEAD" });
-    if (res.ok) return `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg`;
-  } catch {}
-  return "";
+    const res  = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`);
+    const data = await res.json();
+    const book = data[`ISBN:${isbn}`];
+    if (!book) return "";
+    // cover.medium is most reliable; fall back to large then small
+    return book.cover?.medium || book.cover?.large || book.cover?.small || "";
+  } catch {
+    return "";
+  }
 }
 
 // ── CSV Import Modal ───────────────────────────────────────────────────────
@@ -172,6 +191,7 @@ function CsvImportModal({ C, onClose, onImported }) {
           cover_url,
           genres:     [],
           trigger_warnings: [],
+          silent:     true,
         });
         added.push(created);
       } catch (err) {
