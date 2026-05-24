@@ -8,12 +8,14 @@ import { THEMES } from "../theme";
 export default function Profile() {
   const { id }  = useParams();
   const { C, theme, updateTheme } = useTheme();
-  const { user, login } = useAuth();
+  const { user } = useAuth();
 
-  const [member,  setMember]  = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
-  const [form,    setForm]    = useState({ display_name:"", bio:"", theme:"dark-purple" });
+  const [member,       setMember]       = useState(null);
+  const [loading,      setLoading]      = useState(true);
+  const [editing,      setEditing]      = useState(false);
+  const [form,         setForm]         = useState({ display_name:"", bio:"", theme:"dark-purple" });
+  const [reviewFilter, setReviewFilter] = useState("all");
+  const [allMembers,   setAllMembers]   = useState([]);
 
   const isMe = user?.id === id;
 
@@ -21,6 +23,7 @@ export default function Profile() {
     api.getMember(id)
       .then(m => { setMember(m); setForm({ display_name:m.display_name||"", bio:m.bio||"", theme:m.theme||"dark-purple" }); })
       .finally(() => setLoading(false));
+    api.getMembers().then(setAllMembers).catch(() => {});
   }, [id]);
 
   const save = async () => {
@@ -35,14 +38,21 @@ export default function Profile() {
   if (loading) return <div style={{ textAlign:"center", padding:80, color:C.dimmer, fontStyle:"italic" }}>Loading…</div>;
   if (!member) return <div style={{ textAlign:"center", padding:80, color:C.dimmer }}>Member not found</div>;
 
-  const finished = (member.progress||[]).filter(p=>p.status==="finished").length;
-  const reading  = (member.progress||[]).filter(p=>p.status==="reading").length;
-  const avgRating = member.reviews?.length
+  const finished   = (member.progress||[]).filter(p=>p.status==="finished").length;
+  const reading    = (member.progress||[]).filter(p=>p.status==="reading").length;
+  const dnfBooks   = (member.progress||[]).filter(p=>p.status==="dnf");
+  const avgRating  = member.reviews?.length
     ? (member.reviews.reduce((s,r)=>s+r.rating,0)/member.reviews.length).toFixed(1)
     : "—";
 
+  // Filter reviews by member
+  const filteredReviews = reviewFilter === "all"
+    ? (member.reviews||[])
+    : (member.reviews||[]).filter(r => r.member_id === reviewFilter || r.member_name === reviewFilter);
+
   return (
     <div style={{ maxWidth:720, margin:"0 auto", padding:"32px 24px" }}>
+
       {/* Header card */}
       <div style={{ background:`linear-gradient(160deg,${C.card},${C.card2})`, border:`1px solid ${C.border}`, borderRadius:8, padding:"28px 24px", marginBottom:20, display:"flex", gap:20, alignItems:"flex-start", flexWrap:"wrap" }}>
         <Avatar name={member.display_name||member.username} src={member.avatar_url} size={72} />
@@ -80,7 +90,7 @@ export default function Profile() {
               {member.is_admin && <span style={{ fontFamily:"monospace", fontSize:11, color:C.accent, background:C.accent+"22", padding:"2px 8px", borderRadius:10 }}>✦ Admin</span>}
               {member.bio && <p style={{ fontFamily:"'EB Garamond',serif", fontSize:15, color:C.muted, fontStyle:"italic", marginTop:8, lineHeight:1.6 }}>{member.bio}</p>}
               <div style={{ marginTop:12, display:"flex", gap:16, flexWrap:"wrap" }}>
-                {[["Books Finished", finished], ["Currently Reading", reading], ["Reviews", member.reviews?.length||0], ["Avg Rating", avgRating]].map(([l,v]) => (
+                {[["Books Finished",finished],["Currently Reading",reading],["Reviews",member.reviews?.length||0],["Avg Rating",avgRating]].map(([l,v]) => (
                   <div key={l} style={{ textAlign:"center" }}>
                     <div style={{ fontFamily:"'Playfair Display',serif", fontSize:22, color:C.accent, fontWeight:700 }}>{v}</div>
                     <div style={{ fontFamily:"monospace", fontSize:10, color:C.dimmer }}>{l}</div>
@@ -93,12 +103,21 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* Reviews */}
+      {/* Reviews — sortable by member */}
       {member.reviews?.length > 0 && (
         <div style={{ marginBottom:20 }}>
-          <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, letterSpacing:1, marginBottom:12 }}>RECENT REVIEWS</div>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+            <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, letterSpacing:1 }}>REVIEWS ({filteredReviews.length})</div>
+            <select value={reviewFilter} onChange={e=>setReviewFilter(e.target.value)}
+              style={{ background:C.vdark, border:`1px solid ${C.border}`, borderRadius:3, color:C.dim, fontFamily:"monospace", fontSize:11, padding:"4px 8px", outline:"none" }}>
+              <option value="all">All members</option>
+              {allMembers.map(m => (
+                <option key={m.id} value={m.display_name}>{m.display_name}</option>
+              ))}
+            </select>
+          </div>
           <div style={{ display:"grid", gap:10 }}>
-            {member.reviews.slice(0,8).map(r => (
+            {filteredReviews.slice(0,12).map(r => (
               <div key={r.id} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:6, padding:"14px 16px", display:"flex", gap:14, alignItems:"flex-start" }}>
                 {r.cover_url && <img src={r.cover_url} alt="" style={{ width:40, height:56, objectFit:"cover", borderRadius:3, flexShrink:0 }} />}
                 <div style={{ flex:1 }}>
@@ -115,11 +134,11 @@ export default function Profile() {
 
       {/* Reading progress */}
       {member.progress?.filter(p=>p.status!=="want_to_read").length > 0 && (
-        <div>
+        <div style={{ marginBottom:20 }}>
           <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, letterSpacing:1, marginBottom:12 }}>READING PROGRESS</div>
           <div style={{ display:"grid", gap:8 }}>
             {member.progress.filter(p=>p.status!=="want_to_read").map(p => (
-              <div key={p.id} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:6, padding:"12px 16px" }}>
+              <div key={p.id} style={{ background:C.card, border:`1px solid ${p.status==="dnf"?"#90404055":C.border}`, borderRadius:6, padding:"12px 16px" }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                   <div style={{ fontFamily:"'Playfair Display',serif", fontSize:14, color:C.text }}>{p.book_title}</div>
                   <span style={{ fontFamily:"monospace", fontSize:11, color:STATUS_COLORS[p.status] }}>{STATUS_LABELS[p.status]}</span>
@@ -129,6 +148,12 @@ export default function Profile() {
                     <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, marginTop:4 }}>p.{p.current_page} of {p.total_pages}</div>
                     <ProgressBar current={p.current_page} total={p.total_pages} color={C.accent} />
                   </>
+                )}
+                {/* DNF reason */}
+                {p.status==="dnf" && p.dnf_reason && (
+                  <div style={{ fontFamily:"'EB Garamond',serif", fontSize:13, color:"#c06060", fontStyle:"italic", marginTop:6 }}>
+                    💀 "{p.dnf_reason}"
+                  </div>
                 )}
               </div>
             ))}

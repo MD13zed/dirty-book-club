@@ -1,26 +1,39 @@
 import { useState, useEffect } from "react";
 import { useTheme, useAuth } from "../App";
-import { StarRating, Avatar, genreColor, ProgressBar, STATUS_LABELS, STATUS_COLORS, GENRES, GenrePicker } from "./ui";
+import { StarRating, Avatar, genreColor, ProgressBar, STATUS_LABELS, STATUS_COLORS, GENRES, GenrePicker, TwPicker } from "./ui";
 import { api } from "../api";
 
-const INP_STYLE = (C) => ({ width:"100%", background:C.bg, border:`1px solid ${C.border}`, borderRadius:3, color:C.text, fontFamily:"'EB Garamond',serif", fontSize:15, padding:"7px 11px", outline:"none", boxSizing:"border-box" });
+const INP = (C) => ({ width:"100%", background:C.bg, border:`1px solid ${C.border}`, borderRadius:3, color:C.text, fontFamily:"'EB Garamond',serif", fontSize:15, padding:"7px 11px", outline:"none", boxSizing:"border-box" });
 
 export default function BookModal({ book: initialBook, allReviews, onClose, onBookUpdated, onBookDeleted }) {
-  const { C }     = useTheme();
-  const { user }  = useAuth();
-  const [book, setBook]         = useState(initialBook);
-  const [reviews, setReviews]   = useState(allReviews || []);
-  const [progress, setProgress] = useState(null);
-  const [myRating, setMyRating] = useState(0);
-  const [myNotes,  setMyNotes]  = useState("");
-  const [saved,    setSaved]    = useState(false);
+  const { C }    = useTheme();
+  const { user } = useAuth();
+
+  const [book, setBook]           = useState(initialBook);
+  const [reviews, setReviews]     = useState(allReviews || []);
+  const [progress, setProgress]   = useState(null);
+  const [myRating, setMyRating]   = useState(0);
+  const [myNotes,  setMyNotes]    = useState("");
+  const [saved,    setSaved]      = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
-  const [editing,  setEditing]  = useState(false);
-  const [editForm, setEditForm] = useState({ title:book.title, author:book.author||"", series:book.series||"", date_read:book.date_read?.slice(0,10)||"", genres:book.genres||[], cover_url:book.cover_url||"" });
+  const [editing,  setEditing]    = useState(false);
+  const [editForm, setEditForm]   = useState({
+    title:            book.title,
+    author:           book.author||"",
+    series:           book.series||"",
+    date_read:        book.date_read?.slice(0,10)||"",
+    genres:           book.genres||[],
+    trigger_warnings: book.trigger_warnings||[],
+    cover_url:        book.cover_url||"",
+    total_pages:      book.total_pages||"",
+  });
   const [coverFile, setCoverFile] = useState(null);
-  const [tab, setTab]           = useState("reviews"); // reviews | progress
+  const [tab, setTab]             = useState("reviews");
+  const [showTw, setShowTw]       = useState(false);
+  const [dnfReason, setDnfReason] = useState("");
 
   const genres = book.genres || [];
+  const tws    = book.trigger_warnings || [];
 
   useEffect(() => {
     const h = e => e.key === "Escape" && onClose();
@@ -31,10 +44,9 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
   useEffect(() => {
     const myReview = reviews.find(r => r.member_id === user?.id);
     if (myReview) { setMyRating(myReview.rating); setMyNotes(myReview.notes||""); }
-    // Load progress
     api.getProgress(book.id).then(rows => {
       const mine = rows.find(r => r.member_id === user?.id);
-      if (mine) setProgress(mine);
+      if (mine) { setProgress(mine); setDnfReason(mine.dnf_reason||""); }
     }).catch(() => {});
   }, []);
 
@@ -53,46 +65,58 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
 
   const saveEdit = async () => {
     let cover_url = editForm.cover_url;
-    if (coverFile) {
-      const res = await api.uploadCover(coverFile);
-      cover_url = res.url;
-    }
-    const updated = await api.updateBook(book.id, { ...editForm, cover_url });
+    if (coverFile) { const r = await api.uploadCover(coverFile); cover_url = r.url; }
+    const updated = await api.updateBook(book.id, {
+      ...editForm,
+      cover_url,
+      total_pages: editForm.total_pages ? parseInt(editForm.total_pages) : null,
+    });
     setBook(updated);
     setEditing(false);
     onBookUpdated?.(updated);
   };
 
   const others = reviews.filter(r => r.member_id !== user?.id);
-  const avg    = reviews.filter(r=>r.rating>0).reduce((s,r,_,a) => s+r.rating/a.length, 0);
+  const avg    = reviews.filter(r=>r.rating>0).reduce((s,r,_,a)=>s+r.rating/a.length,0);
 
   const tabStyle = (t) => ({
     fontFamily:"monospace", fontSize:12, padding:"6px 14px", cursor:"pointer", border:"none",
-    background: tab===t ? C.accent2 : "transparent",
-    color: tab===t ? C.bg : C.dim, borderRadius:3, transition:"all 0.15s"
+    background:tab===t?C.accent2:"transparent", color:tab===t?C.bg:C.dim, borderRadius:3, transition:"all 0.15s"
   });
 
   return (
     <div onClick={onClose} style={{ position:"fixed", inset:0, background:"#00000099", zIndex:100, display:"flex", alignItems:"center", justifyContent:"center", padding:16, overflowY:"auto" }}>
-      <div onClick={e=>e.stopPropagation()} style={{ background:`linear-gradient(160deg,${C.card},${C.card2})`, border:`1px solid ${C.border}`, borderLeft:`5px solid ${genres.length?genreColor(genres[0]):C.dim}`, borderRadius:6, maxWidth:560, width:"100%", boxShadow:"0 20px 60px #00000099", maxHeight:"90vh", overflowY:"auto", display:"flex", flexDirection:"column" }}>
+      <div onClick={e=>e.stopPropagation()} style={{ background:`linear-gradient(160deg,${C.card},${C.card2})`, border:`1px solid ${C.border}`, borderLeft:`5px solid ${genres.length?genreColor(genres[0]):C.dim}`, borderRadius:6, maxWidth:560, width:"100%", boxShadow:"0 20px 60px #00000099", maxHeight:"90vh", overflowY:"auto" }}>
 
-        {/* Cover */}
         {book.cover_url && <img src={book.cover_url} alt={book.title} style={{ width:"100%", maxHeight:240, objectFit:"cover", objectPosition:"top" }} />}
 
         <div style={{ padding:"28px 24px", display:"flex", flexDirection:"column", gap:14 }}>
-          {/* Header */}
+          {/* Header / Edit form */}
           {editing ? (
             <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-              <input value={editForm.title} onChange={e=>setEditForm(f=>({...f,title:e.target.value}))} placeholder="Title" style={INP_STYLE(C)} />
-              <input value={editForm.author} onChange={e=>setEditForm(f=>({...f,author:e.target.value}))} placeholder="Author" style={INP_STYLE(C)} />
-              <input value={editForm.series} onChange={e=>setEditForm(f=>({...f,series:e.target.value}))} placeholder="Series" style={INP_STYLE(C)} />
-              <input type="date" value={editForm.date_read} onChange={e=>setEditForm(f=>({...f,date_read:e.target.value}))} style={{...INP_STYLE(C),colorScheme:"dark"}} />
-              <input value={editForm.cover_url} onChange={e=>setEditForm(f=>({...f,cover_url:e.target.value}))} placeholder="Cover URL (or upload below)" style={INP_STYLE(C)} />
-              <div>
-                <label style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer }}>Upload cover image</label>
-                <input type="file" accept="image/*" onChange={e=>setCoverFile(e.target.files[0])} style={{ display:"block", marginTop:4, color:C.muted, fontFamily:"monospace", fontSize:12 }} />
+              <input value={editForm.title}  onChange={e=>setEditForm(f=>({...f,title:e.target.value}))}  placeholder="Title"  style={INP(C)} />
+              <input value={editForm.author} onChange={e=>setEditForm(f=>({...f,author:e.target.value}))} placeholder="Author" style={INP(C)} />
+              <input value={editForm.series} onChange={e=>setEditForm(f=>({...f,series:e.target.value}))} placeholder="Series" style={INP(C)} />
+              <div style={{ display:"flex", gap:10 }}>
+                <div style={{ flex:1 }}>
+                  <label style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, display:"block", marginBottom:3 }}>DATE READ</label>
+                  <input type="date" value={editForm.date_read} onChange={e=>setEditForm(f=>({...f,date_read:e.target.value}))} style={{...INP(C),colorScheme:"dark"}} />
+                </div>
+                <div style={{ flex:1 }}>
+                  <label style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, display:"block", marginBottom:3 }}>TOTAL PAGES</label>
+                  <input type="number" value={editForm.total_pages} onChange={e=>setEditForm(f=>({...f,total_pages:e.target.value}))} placeholder="e.g. 400" style={INP(C)} />
+                </div>
               </div>
-              <GenrePicker value={editForm.genres} onChange={g=>setEditForm(f=>({...f,genres:g}))} />
+              <input value={editForm.cover_url} onChange={e=>setEditForm(f=>({...f,cover_url:e.target.value}))} placeholder="Cover URL" style={INP(C)} />
+              <input type="file" accept="image/*" onChange={e=>setCoverFile(e.target.files[0])} style={{ color:C.muted, fontFamily:"monospace", fontSize:12 }} />
+              <div>
+                <label style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, display:"block", marginBottom:6 }}>GENRES — up to 5</label>
+                <GenrePicker value={editForm.genres} onChange={g=>setEditForm(f=>({...f,genres:g}))} />
+              </div>
+              <div>
+                <label style={{ fontFamily:"monospace", fontSize:11, color:"#c04040", display:"block", marginBottom:6 }}>⚠ TRIGGER WARNINGS</label>
+                <TwPicker value={editForm.trigger_warnings} onChange={t=>setEditForm(f=>({...f,trigger_warnings:t}))} />
+              </div>
               <div style={{ display:"flex", gap:8 }}>
                 <button onClick={saveEdit} style={{ background:C.accent2, border:"none", borderRadius:3, color:C.bg, fontFamily:"'Playfair Display',serif", fontSize:13, fontWeight:700, padding:"7px 16px", cursor:"pointer" }}>Save</button>
                 <button onClick={()=>setEditing(false)} style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:3, color:C.dim, fontFamily:"monospace", fontSize:12, padding:"7px 12px", cursor:"pointer" }}>Cancel</button>
@@ -103,34 +127,47 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
               <div style={{ fontFamily:"'Playfair Display',serif", fontSize:22, color:C.text, fontWeight:700, lineHeight:1.3 }}>{book.title}</div>
               {book.author && <div style={{ fontFamily:"'EB Garamond',serif", fontSize:15, color:C.muted, fontStyle:"italic" }}>by {book.author}</div>}
               {book.series && <div style={{ fontFamily:"monospace", fontSize:12, color:C.accent2 }}>📚 {book.series}</div>}
+              {book.total_pages && <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, marginTop:2 }}>{book.total_pages} pages</div>}
               <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:8 }}>
                 {genres.map(g=><span key={g} style={{ fontFamily:"monospace", fontSize:12, color:genreColor(g), background:C.bg, padding:"2px 9px", borderRadius:20, border:`1px solid ${genreColor(g)}55` }}>{g}</span>)}
                 {book.date_read && <span style={{ fontFamily:"monospace", fontSize:12, color:C.dimmer }}>Read {new Date(book.date_read+"T00:00:00").toLocaleDateString("en-US",{month:"long",year:"numeric"})}</span>}
                 {reviews.length > 0 && <span style={{ fontFamily:"monospace", fontSize:12, color:C.dimmer }}>Club avg: {avg.toFixed(1)}★</span>}
               </div>
+              {/* TW toggle */}
+              {tws.length > 0 && (
+                <div style={{ marginTop:8 }}>
+                  <button onClick={()=>setShowTw(v=>!v)} style={{ background:"transparent", border:"1px solid #c0404055", borderRadius:20, color:"#c04040", fontFamily:"monospace", fontSize:11, padding:"3px 10px", cursor:"pointer" }}>
+                    ⚠ {showTw?"Hide":"Show"} trigger warnings ({tws.length})
+                  </button>
+                  {showTw && (
+                    <div style={{ marginTop:6, display:"flex", flexWrap:"wrap", gap:4 }}>
+                      {tws.map(t=><span key={t} style={{ fontFamily:"monospace", fontSize:11, color:"#e06060", background:"#c0404022", padding:"2px 9px", borderRadius:20, border:"1px solid #c0404044" }}>{t}</span>)}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
           {/* Tabs */}
           <div style={{ display:"flex", gap:4, borderBottom:`1px solid ${C.border}`, paddingBottom:10 }}>
-            <button style={tabStyle("reviews")} onClick={()=>setTab("reviews")}>Reviews ({reviews.length})</button>
+            <button style={tabStyle("reviews")}  onClick={()=>setTab("reviews")}>Reviews ({reviews.length})</button>
             <button style={tabStyle("progress")} onClick={()=>setTab("progress")}>My Progress</button>
           </div>
 
+          {/* Reviews tab */}
           {tab === "reviews" && (
             <>
-              {/* My review */}
               <div style={{ background:C.vdark, border:`1px solid ${C.border}`, borderRadius:4, padding:"16px 18px" }}>
                 <div style={{ fontFamily:"monospace", fontSize:11, color:C.accent, marginBottom:8, letterSpacing:1 }}>MY REVIEW</div>
                 <StarRating value={myRating} onChange={setMyRating} size={22} />
                 <textarea value={myNotes} onChange={e=>setMyNotes(e.target.value)} placeholder="Your thoughts…" rows={3}
                   style={{ width:"100%", marginTop:10, background:C.bg, border:`1px solid ${C.border}`, borderRadius:3, color:C.text, fontFamily:"'EB Garamond',serif", fontSize:15, padding:"8px 12px", outline:"none", resize:"vertical", boxSizing:"border-box" }} />
                 <button onClick={saveReview} style={{ marginTop:10, background:saved?`#1a3a2a`:`linear-gradient(135deg,${C.accent},${C.accent2})`, border:"none", borderRadius:3, color:saved?"#7aff7a":C.bg, fontFamily:"'Playfair Display',serif", fontSize:13, fontWeight:700, padding:"7px 18px", cursor:"pointer", transition:"background 0.3s" }}>
-                  {saved ? "✓ Saved" : "Save Review"}
+                  {saved?"✓ Saved":"Save Review"}
                 </button>
               </div>
 
-              {/* Others' reviews */}
               {others.length > 0 && (
                 <div>
                   <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, marginBottom:10, letterSpacing:1 }}>CLUB REVIEWS</div>
@@ -153,6 +190,7 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
             </>
           )}
 
+          {/* Progress tab */}
           {tab === "progress" && (
             <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
               <div>
@@ -167,25 +205,36 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
                 </div>
               </div>
 
-              {(progress?.status === "reading" || progress?.status === "finished") && (
+              {(progress?.status==="reading"||progress?.status==="finished") && (
                 <div style={{ display:"flex", gap:10 }}>
                   <div style={{ flex:1 }}>
                     <label style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, display:"block", marginBottom:4 }}>CURRENT PAGE</label>
                     <input type="number" min={0} value={progress?.current_page||0}
-                      onChange={e=>saveProgress({current_page:parseInt(e.target.value)||0})}
-                      style={INP_STYLE(C)} />
+                      onChange={e=>saveProgress({current_page:parseInt(e.target.value)||0})} style={INP(C)} />
                   </div>
                   <div style={{ flex:1 }}>
                     <label style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, display:"block", marginBottom:4 }}>TOTAL PAGES</label>
-                    <input type="number" min={1} value={progress?.total_pages||""}
-                      onChange={e=>saveProgress({total_pages:parseInt(e.target.value)||null})}
-                      style={INP_STYLE(C)} placeholder="e.g. 400" />
+                    <input type="number" min={1} value={progress?.total_pages||book.total_pages||""}
+                      onChange={e=>saveProgress({total_pages:parseInt(e.target.value)||null})} placeholder="e.g. 400" style={INP(C)} />
                   </div>
                 </div>
               )}
 
-              {progress?.status === "reading" && progress?.total_pages && (
+              {progress?.status==="reading" && progress?.total_pages && (
                 <ProgressBar current={progress.current_page} total={progress.total_pages} color={C.accent} />
+              )}
+
+              {/* DNF reason */}
+              {progress?.status==="dnf" && (
+                <div>
+                  <label style={{ fontFamily:"monospace", fontSize:11, color:"#904040", display:"block", marginBottom:4 }}>WHY DID YOU DNF?</label>
+                  <textarea value={dnfReason} onChange={e=>setDnfReason(e.target.value)} placeholder="Optional — what made you stop?" rows={2}
+                    style={{ width:"100%", background:C.bg, border:"1px solid #90404055", borderRadius:3, color:C.text, fontFamily:"'EB Garamond',serif", fontSize:14, padding:"7px 11px", outline:"none", resize:"vertical", boxSizing:"border-box" }} />
+                  <button onClick={()=>saveProgress({status:"dnf",dnf_reason:dnfReason})}
+                    style={{ marginTop:6, background:"transparent", border:"1px solid #904040", borderRadius:3, color:"#c06060", fontFamily:"monospace", fontSize:12, padding:"5px 12px", cursor:"pointer" }}>
+                    Save reason
+                  </button>
+                </div>
               )}
             </div>
           )}
@@ -194,11 +243,11 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", borderTop:`1px solid ${C.border}`, paddingTop:14 }}>
             <div style={{ display:"flex", gap:8 }}>
               <button onClick={onClose} style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:3, color:C.dim, fontFamily:"monospace", fontSize:12, padding:"6px 14px", cursor:"pointer" }}>Close</button>
-              {(user?.is_admin || book.added_by === user?.id) && !editing && (
+              {(user?.is_admin||book.added_by===user?.id) && !editing && (
                 <button onClick={()=>setEditing(true)} style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:3, color:C.dim, fontFamily:"monospace", fontSize:12, padding:"6px 14px", cursor:"pointer" }}>Edit</button>
               )}
             </div>
-            {(user?.is_admin || book.added_by === user?.id) && (
+            {(user?.is_admin||book.added_by===user?.id) && (
               confirmDel
                 ? <div style={{ display:"flex", gap:8 }}>
                     <span style={{ fontFamily:"monospace", fontSize:12, color:"#c05070", alignSelf:"center" }}>Remove?</span>
