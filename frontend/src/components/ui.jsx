@@ -30,7 +30,7 @@ export function Avatar({ name, src, size = 28 }) {
   })();
   if (src) return <img src={src} alt={name} style={{ width:size, height:size, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />;
   return (
-    <div style={{ width:size, height:size, borderRadius:"50%", background:color, display:"flex", alignItems:\"center\", justifyContent:\"center\", fontSize:size*0.42, fontWeight:700, color:"#0d0a14", flexShrink:0, fontFamily:"monospace" }}>
+    <div style={{ width:size, height:size, borderRadius:"50%", background:color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:size*0.42, fontWeight:700, color:"#0d0a14", flexShrink:0, fontFamily:"monospace" }}>
       {(name||"?")[0].toUpperCase()}
     </div>
   );
