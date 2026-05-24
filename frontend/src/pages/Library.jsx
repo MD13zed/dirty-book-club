@@ -255,22 +255,18 @@ export default function Library() {
                 {books.length===0 && <div style={{ fontStyle:"italic", color:C.dimmer, marginTop:8 }}>Add your first spicy read</div>}
               </div>
             ) : (
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))", gap:14 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))", gap:14, alignItems:"stretch" }}>
                 {filtered.map(book => (
-                  <div key={book.id} style={{ position:"relative" }}>
-                    <BookCard book={book} reviews={reviews[book.id]||[]} myProgress={myProgressMap[book.id]} currentUser={user} onClick={setSelected} />
-                    {/* Nominate button */}
-                    {!nominatedBookIds.has(book.id) && !book.botm_month && (
-                      <button onClick={e=>{e.stopPropagation();nominate(book.id);}}
-                        title="Nominate for Book of the Month"
-                        style={{ position:"absolute", bottom:18, right:10, background:"transparent", border:`1px solid ${C.border}`, borderRadius:20, color:C.dimmer, fontFamily:"monospace", fontSize:10, padding:"2px 8px", cursor:"pointer" }}>
-                        + nominate
-                      </button>
-                    )}
-                    {nominatedBookIds.has(book.id) && (
-                      <div style={{ position:"absolute", bottom:18, right:10, fontFamily:"monospace", fontSize:10, color:C.accent2 }}>🗳 nominated</div>
-                    )}
-                  </div>
+                  <BookCard
+                    key={book.id}
+                    book={book}
+                    reviews={reviews[book.id]||[]}
+                    myProgress={myProgressMap[book.id]}
+                    currentUser={user}
+                    onClick={setSelected}
+                    onNominate={!nominatedBookIds.has(book.id) && !book.botm_month ? () => nominate(book.id) : null}
+                    isNominated={nominatedBookIds.has(book.id)}
+                  />
                 ))}
               </div>
             )}
