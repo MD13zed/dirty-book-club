@@ -1,13 +1,25 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useTheme, useAuth } from "../App";
-import { StarRating, Avatar, genreColor, ProgressBar, STATUS_LABELS, STATUS_COLORS, GENRES, GenrePicker, TwPicker } from "./ui";
+import { StarRating, Avatar, genreColor, ProgressBar, STATUS_LABELS, STATUS_COLORS, GenrePicker, TwPicker } from "./ui";
 import { api } from "../api";
 
 const INP = (C) => ({ width:"100%", background:C.bg, border:`1px solid ${C.border}`, borderRadius:3, color:C.text, fontFamily:"'EB Garamond',serif", fontSize:15, padding:"7px 11px", outline:"none", boxSizing:"border-box" });
 
+function fmtDate(d) {
+  if (!d) return null;
+  try {
+    const s = typeof d === "object" ? d.toISOString().slice(0,10) : String(d).slice(0,10);
+    const dt = new Date(s + "T12:00:00");
+    if (isNaN(dt)) return null;
+    return dt.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  } catch { return null; }
+}
+
 export default function BookModal({ book: initialBook, allReviews, onClose, onBookUpdated, onBookDeleted }) {
   const { C }    = useTheme();
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [book, setBook]           = useState(initialBook);
   const [reviews, setReviews]     = useState(allReviews || []);
@@ -21,7 +33,7 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
     title:            book.title,
     author:           book.author||"",
     series:           book.series||"",
-    date_read:        book.date_read?.slice(0,10)||"",
+    date_read:        book.date_read ? String(book.date_read).slice(0,10) : "",
     genres:           book.genres||[],
     trigger_warnings: book.trigger_warnings||[],
     cover_url:        book.cover_url||"",
@@ -91,7 +103,8 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
         {book.cover_url && <img src={book.cover_url} alt={book.title} style={{ width:"100%", maxHeight:240, objectFit:"cover", objectPosition:"top" }} />}
 
         <div style={{ padding:"28px 24px", display:"flex", flexDirection:"column", gap:14 }}>
-          {/* Header / Edit form */}
+
+          {/* Edit form */}
           {editing ? (
             <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
               <input value={editForm.title}  onChange={e=>setEditForm(f=>({...f,title:e.target.value}))}  placeholder="Title"  style={INP(C)} />
@@ -130,7 +143,7 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
               {book.total_pages && <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, marginTop:2 }}>{book.total_pages} pages</div>}
               <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:8 }}>
                 {genres.map(g=><span key={g} style={{ fontFamily:"monospace", fontSize:12, color:genreColor(g), background:C.bg, padding:"2px 9px", borderRadius:20, border:`1px solid ${genreColor(g)}55` }}>{g}</span>)}
-                {book.date_read && <span style={{ fontFamily:"monospace", fontSize:12, color:C.dimmer }}>Read {new Date(book.date_read+"T00:00:00").toLocaleDateString("en-US",{month:"long",year:"numeric"})}</span>}
+                {fmtDate(book.date_read) && <span style={{ fontFamily:"monospace", fontSize:12, color:C.dimmer }}>Read {fmtDate(book.date_read)}</span>}
                 {reviews.length > 0 && <span style={{ fontFamily:"monospace", fontSize:12, color:C.dimmer }}>Club avg: {avg.toFixed(1)}★</span>}
               </div>
               {/* TW toggle */}
@@ -174,10 +187,16 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
                   <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
                     {others.map(r => (
                       <div key={r.member_id} style={{ display:"flex", gap:10, alignItems:"flex-start" }}>
-                        <Avatar name={r.member_name} src={r.member_avatar} size={28} />
+                        {/* Clicking avatar or name goes to their profile */}
+                        <div onClick={()=>{ onClose(); navigate(`/profile/${r.member_id}`); }} style={{ cursor:"pointer" }}>
+                          <Avatar name={r.member_name} src={r.member_avatar} size={28} />
+                        </div>
                         <div style={{ flex:1 }}>
                           <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:2 }}>
-                            <span style={{ fontFamily:"monospace", fontSize:12, color:C.muted }}>{r.member_name}</span>
+                            <span onClick={()=>{ onClose(); navigate(`/profile/${r.member_id}`); }}
+                              style={{ fontFamily:"monospace", fontSize:12, color:C.accent, cursor:"pointer", textDecoration:"underline", textDecorationStyle:"dotted" }}>
+                              {r.member_name}
+                            </span>
                             <StarRating value={r.rating} size={12} />
                           </div>
                           {r.notes && <div style={{ fontFamily:"'EB Garamond',serif", fontSize:14, color:C.muted, fontStyle:"italic", lineHeight:1.5 }}>"{r.notes}"</div>}
@@ -224,7 +243,6 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
                 <ProgressBar current={progress.current_page} total={progress.total_pages} color={C.accent} />
               )}
 
-              {/* DNF reason */}
               {progress?.status==="dnf" && (
                 <div>
                   <label style={{ fontFamily:"monospace", fontSize:11, color:"#904040", display:"block", marginBottom:4 }}>WHY DID YOU DNF?</label>

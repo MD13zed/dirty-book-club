@@ -10,12 +10,11 @@ export default function Profile() {
   const { C, theme, updateTheme } = useTheme();
   const { user } = useAuth();
 
-  const [member,       setMember]       = useState(null);
-  const [loading,      setLoading]      = useState(true);
-  const [editing,      setEditing]      = useState(false);
-  const [form,         setForm]         = useState({ display_name:"", bio:"", theme:"dark-purple" });
-  const [reviewFilter, setReviewFilter] = useState("all");
-  const [allMembers,   setAllMembers]   = useState([]);
+  const [member,      setMember]      = useState(null);
+  const [loading,     setLoading]     = useState(true);
+  const [editing,     setEditing]     = useState(false);
+  const [form,        setForm]        = useState({ display_name:"", bio:"", theme:"dark-purple" });
+  const [ratingFilter, setRatingFilter] = useState("all"); // "all" | "5" | "4" | "3" | "2" | "1"
 
   const isMe = user?.id === id;
 
@@ -23,7 +22,6 @@ export default function Profile() {
     api.getMember(id)
       .then(m => { setMember(m); setForm({ display_name:m.display_name||"", bio:m.bio||"", theme:m.theme||"dark-purple" }); })
       .finally(() => setLoading(false));
-    api.getMembers().then(setAllMembers).catch(() => {});
   }, [id]);
 
   const save = async () => {
@@ -38,17 +36,16 @@ export default function Profile() {
   if (loading) return <div style={{ textAlign:"center", padding:80, color:C.dimmer, fontStyle:"italic" }}>Loading…</div>;
   if (!member) return <div style={{ textAlign:"center", padding:80, color:C.dimmer }}>Member not found</div>;
 
-  const finished   = (member.progress||[]).filter(p=>p.status==="finished").length;
-  const reading    = (member.progress||[]).filter(p=>p.status==="reading").length;
-  const dnfBooks   = (member.progress||[]).filter(p=>p.status==="dnf");
-  const avgRating  = member.reviews?.length
+  const finished  = (member.progress||[]).filter(p=>p.status==="finished").length;
+  const reading   = (member.progress||[]).filter(p=>p.status==="reading").length;
+  const avgRating = member.reviews?.length
     ? (member.reviews.reduce((s,r)=>s+r.rating,0)/member.reviews.length).toFixed(1)
     : "—";
 
-  // Filter reviews by member
-  const filteredReviews = reviewFilter === "all"
+  // Filter reviews by star rating
+  const filteredReviews = ratingFilter === "all"
     ? (member.reviews||[])
-    : (member.reviews||[]).filter(r => r.member_id === reviewFilter || r.member_name === reviewFilter);
+    : (member.reviews||[]).filter(r => r.rating === parseInt(ratingFilter));
 
   return (
     <div style={{ maxWidth:720, margin:"0 auto", padding:"32px 24px" }}>
@@ -103,21 +100,25 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* Reviews — sortable by member */}
+      {/* Reviews — filterable by star rating */}
       {member.reviews?.length > 0 && (
         <div style={{ marginBottom:20 }}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
-            <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, letterSpacing:1 }}>REVIEWS ({filteredReviews.length})</div>
-            <select value={reviewFilter} onChange={e=>setReviewFilter(e.target.value)}
-              style={{ background:C.vdark, border:`1px solid ${C.border}`, borderRadius:3, color:C.dim, fontFamily:"monospace", fontSize:11, padding:"4px 8px", outline:"none" }}>
-              <option value="all">All members</option>
-              {allMembers.map(m => (
-                <option key={m.id} value={m.display_name}>{m.display_name}</option>
+            <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, letterSpacing:1 }}>
+              REVIEWS ({filteredReviews.length}{ratingFilter!=="all"?` × ${ratingFilter}★`:""})
+            </div>
+            {/* Star rating filter */}
+            <div style={{ display:"flex", gap:4 }}>
+              {["all","5","4","3","2","1"].map(v => (
+                <button key={v} onClick={()=>setRatingFilter(v)}
+                  style={{ background:ratingFilter===v?C.accent2+"44":"transparent", border:`1px solid ${ratingFilter===v?C.accent2:C.border}`, borderRadius:4, color:ratingFilter===v?C.accent2:C.dim, fontFamily:"monospace", fontSize:11, padding:"3px 8px", cursor:"pointer", transition:"all 0.15s" }}>
+                  {v==="all" ? "All" : `${v}★`}
+                </button>
               ))}
-            </select>
+            </div>
           </div>
           <div style={{ display:"grid", gap:10 }}>
-            {filteredReviews.slice(0,12).map(r => (
+            {filteredReviews.slice(0,20).map(r => (
               <div key={r.id} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:6, padding:"14px 16px", display:"flex", gap:14, alignItems:"flex-start" }}>
                 {r.cover_url && <img src={r.cover_url} alt="" style={{ width:40, height:56, objectFit:"cover", borderRadius:3, flexShrink:0 }} />}
                 <div style={{ flex:1 }}>
@@ -128,6 +129,11 @@ export default function Profile() {
                 </div>
               </div>
             ))}
+            {filteredReviews.length === 0 && (
+              <div style={{ color:C.dimmer, fontStyle:"italic", fontFamily:"'EB Garamond',serif", fontSize:14, textAlign:"center", padding:20 }}>
+                No {ratingFilter!=="all"?`${ratingFilter}★ `:""}reviews yet
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -149,7 +155,6 @@ export default function Profile() {
                     <ProgressBar current={p.current_page} total={p.total_pages} color={C.accent} />
                   </>
                 )}
-                {/* DNF reason */}
                 {p.status==="dnf" && p.dnf_reason && (
                   <div style={{ fontFamily:"'EB Garamond',serif", fontSize:13, color:"#c06060", fontStyle:"italic", marginTop:6 }}>
                     💀 "{p.dnf_reason}"

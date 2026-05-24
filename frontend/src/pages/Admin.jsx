@@ -234,7 +234,7 @@ export default function Admin() {
             <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, letterSpacing:1, marginBottom:14 }}>PREVIOUS BOOKS OF THE MONTH</div>
             <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
               {books.filter(b=>b.botm_month).length===0 && <div style={{ color:C.dimmer, fontStyle:"italic", fontSize:14 }}>None set yet</div>}
-              {books.filter(b=>b.botm_month).sort((a,b)=>new Date(b.botm_month)-new Date(a.botm_month)).map(b=>(
+              {books.filter(b=>b.botm_month).sort((a,b)=>{ const p=s=>{ const [m,y]=s.split(" "); return new Date(`${y}-${["January","February","March","April","May","June","July","August","September","October","November","December"].indexOf(m)+1}-01`); }; return p(b.botm_month)-p(a.botm_month); }).map(b=>(
                 <div key={b.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                   <div style={{ fontFamily:"'Playfair Display',serif", fontSize:14, color:C.text }}>{b.title}</div>
                   <div style={{ fontFamily:"monospace", fontSize:11, color:"#d4af37" }}>🔥 {b.botm_month}</div>

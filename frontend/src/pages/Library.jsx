@@ -29,6 +29,7 @@ export default function Library() {
   const [search,   setSearch]   = useState("");
   const [filterG,  setFilterG]  = useState("");
   const [sortBy,   setSortBy]   = useState("added_at");
+  const [statusFilter, setStatusFilter] = useState(""); // "" | "reading" | "finished" | "want_to_read" | "dnf"
   const [form,     setForm]     = useState({ title:"", author:"", series:"", genres:[], trigger_warnings:[], date_read:"", cover_url:"", total_pages:"" });
   const [coverFile, setCoverFile] = useState(null);
   const titleRef = useRef();
@@ -76,7 +77,8 @@ export default function Library() {
     .filter(b => {
       const q = search.toLowerCase();
       return (!q || b.title.toLowerCase().includes(q) || (b.author||"").toLowerCase().includes(q) || (b.series||"").toLowerCase().includes(q))
-        && (!filterG || (b.genres||[]).includes(filterG));
+        && (!filterG || (b.genres||[]).includes(filterG))
+        && (!statusFilter || myProgressMap[b.id]?.status === statusFilter);
     })
     .sort((a, b) => {
       if (sortBy==="title")      return a.title.localeCompare(b.title);
@@ -169,6 +171,23 @@ export default function Library() {
               })}
             </div>
           )}
+
+
+          {/* Reading status filter */}
+          <div style={{ display:"flex", gap:6, padding:"10px 24px", borderBottom:`1px solid ${C.border2}`, flexWrap:"wrap" }}>
+            {[
+              { value:"", label:"All Books" },
+              { value:"reading",      label:"📖 Reading" },
+              { value:"finished",     label:"✅ Finished" },
+              { value:"want_to_read", label:"📚 Want to Read" },
+              { value:"dnf",          label:"💀 DNF" },
+            ].map(s => (
+              <button key={s.value} onClick={()=>setStatusFilter(s.value)}
+                style={{ background:statusFilter===s.value?C.accent2+"44":"transparent", border:`1px solid ${statusFilter===s.value?C.accent2:C.border}`, borderRadius:20, color:statusFilter===s.value?C.accent2:C.dim, fontFamily:"monospace", fontSize:11, padding:"4px 12px", cursor:"pointer", transition:"all 0.15s" }}>
+                {s.label}
+              </button>
+            ))}
+          </div>
 
           {/* Filters */}
           <div style={{ padding:"12px 24px", display:"flex", gap:10, flexWrap:"wrap", borderBottom:`1px solid ${C.border2}` }}>
