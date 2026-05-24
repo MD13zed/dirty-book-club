@@ -6,12 +6,12 @@ const { v4: uuidv4 } = require("uuid");
 const SITE_URL = process.env.FRONTEND_URL || "https://thespicyshelf.vercel.app";
 
 // ── Signature verification ────────────────────────────────────────────────────
-function verify(req, res, next) {
+async function verify(req, res, next) {
   const sig  = req.headers["x-signature-ed25519"];
   const ts   = req.headers["x-signature-timestamp"];
   const body = req.body;
   if (!sig || !ts || !body) return res.status(401).end("Unauthorized");
-  const isValid = verifyKey(body, sig, ts, process.env.DISCORD_APP_PUBLIC_KEY);
+  const isValid = await verifyKey(body, sig, ts, process.env.DISCORD_APP_PUBLIC_KEY);
   if (!isValid) return res.status(401).end("Invalid signature");
   try { req.interaction = JSON.parse(body.toString()); }
   catch { return res.status(400).end("Bad JSON"); }
