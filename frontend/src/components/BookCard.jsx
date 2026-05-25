@@ -160,7 +160,7 @@ export default function BookCard({ book, reviews = [], myProgress, currentUser, 
             )}
             {myProgress.status === "finished" && (
               <>
-                <span style={{ fontFamily:"monospace", fontSize:9, color:STATUS_COLORS["finished"] }}>✅ Finished{myProgress.finished_at ? ` · ${new Date(myProgress.finished_at+"T12:00:00").toLocaleDateString("en-US",{month:"short",year:"numeric"})}` : ""}</span>
+                <span style={{ fontFamily:"monospace", fontSize:9, color:STATUS_COLORS["finished"] }}>✅ Finished{fmtDate(myProgress.finished_at) ? ` · ${fmtDate(myProgress.finished_at)}` : ""}</span>
                 <ProgressBar current={1} total={1} color={STATUS_COLORS["finished"]} />
               </>
             )}
