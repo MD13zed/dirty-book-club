@@ -227,7 +227,10 @@ async function handleMyShelf(res, options, discordId) {
       value: books.map(b => {
         let line = `**${b.title}**${b.author?` *by ${b.author}*`:""}`;
         if (st==="reading" && b.current_page && b.total_pages) {
-          line += `\n└ p.${b.current_page}/${b.total_pages} (${Math.round((b.current_page/b.total_pages)*100)}%)`;
+          const pct   = Math.round((b.current_page / b.total_pages) * 100);
+          const filled = Math.round(pct / 10);
+          const bar   = "█".repeat(filled) + "░".repeat(10 - filled);
+          line += `\n\`${bar}\` ${pct}% · p.${b.current_page}/${b.total_pages}`;
         }
         return line;
       }).join("\n"),
@@ -291,6 +294,135 @@ async function handleLeaderboard(res) {
   }));
 
   return res.json(reply([embed("🏅 Reading Leaderboard", `[View profiles](${SITE_URL})`, color.gold, fields)]));
+}
+
+// ── Members list ──────────────────────────────────────────────────────────────
+async function handleMembers(res, options) {
+  const targetDiscordId = options?.find(o => o.name === "user")?.value || null;
+
+  // ── Single member view ──────────────────────────────────────────────────────
+  if (targetDiscordId) {
+    const { rows: [member] } = await pool.query(
+      `SELECT m.id, m.display_name, m.username
+       FROM members m WHERE m.discord_id = $1`, [targetDiscordId]
+    );
+    if (!member) return res.json(err("That person hasn't joined The Spicy Shelf yet."));
+
+    const name = member.display_name || member.username;
+
+    const { rows: [stats] } = await pool.query(`
+      SELECT
+        COUNT(DISTINCT rp.book_id) FILTER (WHERE rp.status = 'finished')::int  AS finished,
+        COUNT(DISTINCT rp.book_id) FILTER (WHERE rp.status = 'reading')::int   AS reading,
+        COUNT(DISTINCT rp.book_id) FILTER (WHERE rp.status = 'dnf')::int       AS dnf,
+        COUNT(DISTINCT r.id)::int                                               AS reviews,
+        ROUND(AVG(r.rating) FILTER (WHERE r.rating > 0), 1)::float             AS avg_rating
+      FROM members m
+      LEFT JOIN reading_progress rp ON rp.member_id = m.id
+      LEFT JOIN reviews r ON r.member_id = m.id
+      WHERE m.id = $1
+    `, [member.id]);
+
+    const { rows: currentlyReading } = await pool.query(`
+      SELECT b.title, rp.current_page, rp.total_pages
+      FROM reading_progress rp JOIN books b ON b.id = rp.book_id
+      WHERE rp.member_id = $1 AND rp.status = 'reading'
+      ORDER BY rp.updated_at DESC LIMIT 5
+    `, [member.id]);
+
+    const { rows: recentReviews } = await pool.query(`
+      SELECT b.title, r.rating, r.notes
+      FROM reviews r JOIN books b ON b.id = r.book_id
+      WHERE r.member_id = $1 AND r.rating > 0
+      ORDER BY r.created_at DESC LIMIT 3
+    `, [member.id]);
+
+    const { rows: [topGenre] } = await pool.query(`
+      SELECT bg.genre, COUNT(*)::int AS cnt
+      FROM reading_progress rp
+      JOIN book_genres bg ON bg.book_id = rp.book_id
+      WHERE rp.member_id = $1 AND rp.status = 'finished'
+      GROUP BY bg.genre ORDER BY cnt DESC LIMIT 1
+    `, [member.id]);
+
+    const fields = [
+      {
+        name: "📊 Stats",
+        value: [
+          stats.finished   ? `📚 ${stats.finished} book${stats.finished!==1?"s":""} finished`     : "No books finished yet",
+          stats.reading    ? `📖 ${stats.reading} currently reading`   : null,
+          stats.dnf        ? `💀 ${stats.dnf} DNF`                    : null,
+          stats.reviews    ? `⭐ ${stats.reviews} reviews · avg ${stats.avg_rating}★` : null,
+          topGenre         ? `❤️ Fave genre: ${topGenre.genre}`        : null,
+        ].filter(Boolean).join("\n") || "No activity yet",
+        inline: false,
+      },
+    ];
+
+    if (currentlyReading.length) {
+      fields.push({
+        name: "📖 Currently reading",
+        value: currentlyReading.map(b => {
+          let line = `**${b.title}**`;
+          if (b.current_page && b.total_pages) {
+            const pct = Math.round((b.current_page / b.total_pages) * 100);
+            const bar = "█".repeat(Math.round(pct/10)) + "░".repeat(10 - Math.round(pct/10));
+            line += `\n\`${bar}\` ${pct}%`;
+          }
+          return line;
+        }).join("\n"),
+        inline: false,
+      });
+    }
+
+    if (recentReviews.length) {
+      fields.push({
+        name: "💬 Recent reviews",
+        value: recentReviews.map(r =>
+          `**${r.title}** — ${"⭐".repeat(r.rating)}${r.notes ? `\n*"${r.notes.slice(0,80)}${r.notes.length>80?"…":""}"*` : ""}`
+        ).join("\n"),
+        inline: false,
+      });
+    }
+
+    return res.json(reply([embed(
+      `👤 ${name}`,
+      `[View full profile](${SITE_URL})`,
+      color.purple, fields,
+    )]));
+  }
+
+  // ── Full member list ────────────────────────────────────────────────────────
+  const { rows } = await pool.query(`
+    SELECT
+      m.display_name, m.username,
+      COUNT(DISTINCT rp.book_id) FILTER (WHERE rp.status = 'finished')::int  AS finished,
+      COUNT(DISTINCT rp.book_id) FILTER (WHERE rp.status = 'reading')::int   AS reading,
+      COUNT(DISTINCT r.id)::int                                               AS reviews,
+      ROUND(AVG(r.rating) FILTER (WHERE r.rating > 0), 1)::float             AS avg_rating
+    FROM members m
+    LEFT JOIN reading_progress rp ON rp.member_id = m.id
+    LEFT JOIN reviews r ON r.member_id = m.id
+    GROUP BY m.id
+    ORDER BY finished DESC, reviews DESC
+  `);
+  if (!rows.length) return res.json(reply([embed("👥 Members", "No members yet.", color.purple)]));
+  const fields = rows.map((m, i) => {
+    const name  = m.display_name || m.username;
+    const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i+1}.`;
+    const stats = [
+      m.finished   ? `📚 ${m.finished} finished`   : null,
+      m.reading    ? `📖 ${m.reading} reading`     : null,
+      m.reviews    ? `⭐ ${m.reviews} reviews`     : null,
+      m.avg_rating ? `avg ${m.avg_rating}★`        : null,
+    ].filter(Boolean).join(" · ") || "No activity yet";
+    return { name:`${medal} ${name}`, value:stats, inline:false };
+  });
+  return res.json(reply([embed(
+    `👥 Club Members — ${rows.length}`,
+    `[View profiles on the site](${SITE_URL})`,
+    color.purple, fields,
+  )]));
 }
 
 // ── Getting started guide ─────────────────────────────────────────────────────
@@ -402,6 +534,7 @@ router.post("/", verify, async (req, res) => {
         case "myshelf":      return await handleMyShelf(res, options, discordId);
         case "nominations":  return await handleNominations(res);
         case "leaderboard":      return await handleLeaderboard(res);
+        case "members":          return await handleMembers(res, options);
         case "getting-started":  return handleGettingStarted(res);
         default:                 return res.json(err("Unknown command."));
       }

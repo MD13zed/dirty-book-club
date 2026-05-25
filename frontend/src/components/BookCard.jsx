@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTheme } from "../App";
 import { StarRating, Avatar, genreColor, ProgressBar, STATUS_COLORS } from "./ui";
 
@@ -14,9 +14,32 @@ function fmtDate(d) {
 
 const COVER_H = 180; // fixed cover height for all cards
 
+function twDismissKey(userId, bookId) { return `tw_dismissed_${userId}_${bookId}`; }
+
 export default function BookCard({ book, reviews = [], myProgress, currentUser, onClick, onNominate, isNominated }) {
   const { C }  = useTheme();
-  const [showTw, setShowTw] = useState(false);
+  const [showTw,     setShowTw]     = useState(false);
+  const [twDismissed, setTwDismissed] = useState(false);
+
+  // Load dismissed state from localStorage on mount
+  useEffect(() => {
+    if (!currentUser?.id || !book.id) return;
+    const dismissed = localStorage.getItem(twDismissKey(currentUser.id, book.id));
+    if (dismissed === "1") setTwDismissed(true);
+  }, [currentUser?.id, book.id]);
+
+  const dismissTw = (e) => {
+    e.stopPropagation();
+    localStorage.setItem(twDismissKey(currentUser.id, book.id), "1");
+    setTwDismissed(true);
+    setShowTw(false);
+  };
+
+  const undismissTw = (e) => {
+    e.stopPropagation();
+    localStorage.removeItem(twDismissKey(currentUser.id, book.id));
+    setTwDismissed(false);
+  };
 
   const avg      = reviews.filter(r=>r.rating>0).reduce((s,r,_,a) => s+r.rating/a.length, 0);
   const myReview = reviews.find(r => r.member_id === currentUser?.id);
@@ -74,16 +97,32 @@ export default function BookCard({ book, reviews = [], myProgress, currentUser, 
         {/* Trigger warnings */}
         {tws.length > 0 && (
           <div>
-            <button onClick={e => { e.stopPropagation(); setShowTw(v => !v); }}
-              style={{ background:"transparent", border:"1px solid #c0404055", borderRadius:20, color:"#c04040", fontFamily:"monospace", fontSize:9, padding:"2px 7px", cursor:"pointer" }}>
-              ⚠ {showTw ? "hide" : "show"} TW ({tws.length})
-            </button>
-            {showTw && (
-              <div style={{ marginTop:4, display:"flex", flexWrap:"wrap", gap:3 }}>
-                {tws.map(t => (
-                  <span key={t} style={{ fontFamily:"monospace", fontSize:9, color:"#e06060", background:"#c0404022", padding:"1px 6px", borderRadius:20, border:"1px solid #c0404044" }}>{t}</span>
-                ))}
-              </div>
+            {twDismissed ? (
+              // Dismissed — show a subtle "TW" hint they can tap to restore
+              <button onClick={undismissTw}
+                style={{ background:"transparent", border:"none", color:"#c0404066", fontFamily:"monospace", fontSize:9, padding:"0", cursor:"pointer" }}>
+                ⚠ TW dismissed — show again
+              </button>
+            ) : (
+              <>
+                <button onClick={e => { e.stopPropagation(); setShowTw(v => !v); }}
+                  style={{ background:"transparent", border:"1px solid #c0404055", borderRadius:20, color:"#c04040", fontFamily:"monospace", fontSize:9, padding:"2px 7px", cursor:"pointer" }}>
+                  ⚠ {showTw ? "hide" : "show"} TW ({tws.length})
+                </button>
+                {showTw && (
+                  <div style={{ marginTop:4 }}>
+                    <div style={{ display:"flex", flexWrap:"wrap", gap:3, marginBottom:4 }}>
+                      {tws.map(t => (
+                        <span key={t} style={{ fontFamily:"monospace", fontSize:9, color:"#e06060", background:"#c0404022", padding:"1px 6px", borderRadius:20, border:"1px solid #c0404044" }}>{t}</span>
+                      ))}
+                    </div>
+                    <button onClick={dismissTw}
+                      style={{ background:"transparent", border:"none", color:"#c0404088", fontFamily:"monospace", fontSize:9, padding:0, cursor:"pointer", textDecoration:"underline" }}>
+                      dismiss — don't show again
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -107,14 +146,28 @@ export default function BookCard({ book, reviews = [], myProgress, currentUser, 
         {/* Reading progress */}
         {myProgress && myProgress.status !== "want_to_read" && (
           <div onClick={() => onClick(book)} style={{ cursor:"pointer" }}>
-            <span style={{ fontFamily:"monospace", fontSize:9, color:STATUS_COLORS[myProgress.status] }}>
-              {myProgress.status === "reading" && myProgress.total_pages
-                ? `📖 p.${myProgress.current_page}/${myProgress.total_pages}`
-                : myProgress.status === "finished" ? "✅ Finished"
-                : myProgress.status === "dnf" ? "💀 DNF" : ""}
-            </span>
-            {myProgress.status === "reading" && myProgress.total_pages && (
-              <ProgressBar current={myProgress.current_page} total={myProgress.total_pages} color={C.accent} />
+            {myProgress.status === "reading" && (
+              <>
+                <span style={{ fontFamily:"monospace", fontSize:9, color:STATUS_COLORS["reading"] }}>
+                  📖 {myProgress.current_page && myProgress.total_pages
+                    ? `p.${myProgress.current_page} of ${myProgress.total_pages} · ${Math.round((myProgress.current_page/myProgress.total_pages)*100)}%`
+                    : myProgress.current_page ? `p.${myProgress.current_page}` : "Reading"}
+                </span>
+                {myProgress.current_page && myProgress.total_pages && (
+                  <ProgressBar current={myProgress.current_page} total={myProgress.total_pages} color={STATUS_COLORS["reading"]} />
+                )}
+              </>
+            )}
+            {myProgress.status === "finished" && (
+              <>
+                <span style={{ fontFamily:"monospace", fontSize:9, color:STATUS_COLORS["finished"] }}>✅ Finished{myProgress.finished_at ? ` · ${new Date(myProgress.finished_at+"T12:00:00").toLocaleDateString("en-US",{month:"short",year:"numeric"})}` : ""}</span>
+                <ProgressBar current={1} total={1} color={STATUS_COLORS["finished"]} />
+              </>
+            )}
+            {myProgress.status === "dnf" && (
+              <span style={{ fontFamily:"monospace", fontSize:9, color:STATUS_COLORS["dnf"] }}>
+                💀 DNF{myProgress.current_page && myProgress.total_pages ? ` · ${Math.round((myProgress.current_page/myProgress.total_pages)*100)}%` : ""}
+              </span>
             )}
           </div>
         )}

@@ -91,6 +91,18 @@ const commands = [
     description: "See who has read the most books and left the most reviews 🏅",
   },
   {
+    name:        "members",
+    description: "See everyone in the club and their reading stats 👥",
+    options: [
+      {
+        name:        "user",
+        description: "Look up a specific member",
+        type:        6,       // USER type
+        required:    false,
+      },
+    ],
+  },
+  {
     name:        "getting-started",
     description: "A full guide to everything you can do on The Spicy Shelf 🔥",
   },

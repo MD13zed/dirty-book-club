@@ -342,7 +342,13 @@ export default function Library() {
   const [statusFilter, setStatusFilter] = useState("");
   const [form,     setForm]     = useState({ title:"", author:"", series:"", genres:[], trigger_warnings:[], date_read:"", cover_url:"", total_pages:"" });
   const [coverFile, setCoverFile] = useState(null);
+  const gridRef  = useRef();
   const titleRef = useRef();
+
+  const closeForm = () => {
+    setShowForm(false);
+    setTimeout(() => gridRef.current?.scrollIntoView({ behavior:"smooth", block:"start" }), 50);
+  };
 
   // ── Book search state ──────────────────────────────────────────────────
   const [bookQuery,      setBookQuery]      = useState("");
@@ -402,7 +408,7 @@ export default function Library() {
     setBooks(b => [book, ...b]);
     setForm({ title:"", author:"", series:"", genres:[], trigger_warnings:[], date_read:"", cover_url:"", total_pages:"" });
     setCoverFile(null);
-    setShowForm(false);
+    closeForm();
   };
 
   const nominate = async (bookId) => {
@@ -492,7 +498,7 @@ export default function Library() {
           )}
 
           <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-            {noms.map(n => (
+            {[...noms].sort((a,b) => (b.vote_count||0) - (a.vote_count||0)).map(n => (
               <div key={n.id} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:6, padding:"16px 18px", display:"flex", gap:14, alignItems:"center" }}>
                 {n.cover_url && <img src={n.cover_url} alt={n.title} style={{ width:44, height:62, objectFit:"cover", borderRadius:3, flexShrink:0 }} />}
                 <div style={{ flex:1, minWidth:0 }}>
@@ -639,13 +645,13 @@ export default function Library() {
               </div>
               <div style={{ display:"flex", gap:10 }}>
                 <button onClick={addBook} style={{ background:`linear-gradient(135deg,${C.accent},${C.accent2})`, border:"none", borderRadius:3, color:C.bg, fontFamily:"'Playfair Display',serif", fontSize:13, fontWeight:700, padding:"8px 20px", cursor:"pointer" }}>Add to Library</button>
-                <button onClick={()=>setShowForm(false)} style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:3, color:C.dim, fontFamily:"monospace", fontSize:12, padding:"8px 14px", cursor:"pointer" }}>Cancel</button>
+                <button onClick={closeForm} style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:3, color:C.dim, fontFamily:"monospace", fontSize:12, padding:"8px 14px", cursor:"pointer" }}>Cancel</button>
               </div>
             </div>
           )}
 
           {/* Book grid */}
-          <div style={{ padding:"20px 24px" }}>
+          <div style={{ padding:"20px 24px" }} ref={gridRef}>
             {loading ? (
               <div style={{ textAlign:"center", color:C.dimmer, fontStyle:"italic", padding:80 }}>Loading the library…</div>
             ) : filtered.length===0 ? (
