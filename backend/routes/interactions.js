@@ -334,7 +334,7 @@ async function handleMembers(res, options) {
       SELECT b.title, r.rating, r.notes
       FROM reviews r JOIN books b ON b.id = r.book_id
       WHERE r.member_id = $1 AND r.rating > 0
-      ORDER BY r.created_at DESC LIMIT 3
+      ORDER BY r.updated_at DESC LIMIT 3
     `, [member.id]);
 
     const { rows: [topGenre] } = await pool.query(`
