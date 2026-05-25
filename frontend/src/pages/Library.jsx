@@ -203,6 +203,7 @@ function CsvImportModal({ C, onClose, onImported, existingBooks }) {
           genres:     [],
           trigger_warnings: [],
           silent:     true,
+          source:     "csv",
         });
         added.push(created);
       } catch (err) {

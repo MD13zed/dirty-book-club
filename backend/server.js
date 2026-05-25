@@ -28,6 +28,7 @@ app.use("/api/members",       require("./routes/members"));
 app.use("/api/admin",         require("./routes/admin"));
 app.use("/api/uploads",       require("./routes/uploads"));
 app.use("/api/nominations",   require("./routes/nominations"));
+app.use("/api/digest",        require("./routes/digest"));
 
 app.get("/health", (req, res) => res.json({ ok: true, ts: new Date() }));
 app.use((req, res) => res.status(404).json({ error: "Not found" }));

@@ -75,15 +75,15 @@ router.get("/:id", async (req, res) => {
 
 // POST /api/books
 router.post("/", auth, async (req, res) => {
-  const { title, author, series, cover_url, date_read, genres = [], trigger_warnings = [], total_pages, silent = false } = req.body;
+  const { title, author, series, cover_url, date_read, genres = [], trigger_warnings = [], total_pages, silent = false, source = "manual" } = req.body;
   if (!title?.trim()) return res.status(400).json({ error: "Title required" });
 
   const id = uuidv4();
   try {
     await pool.query(
-      `INSERT INTO books (id, title, author, series, cover_url, date_read, added_by, total_pages)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-      [id, title.trim(), author||"", series||"", cover_url||"", date_read||null, req.user.id, total_pages||null]
+      `INSERT INTO books (id, title, author, series, cover_url, date_read, added_by, total_pages, source)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [id, title.trim(), author||"", series||"", cover_url||"", date_read||null, req.user.id, total_pages||null, source]
     );
     for (const g of genres.slice(0,5)) {
       await pool.query("INSERT INTO book_genres (book_id,genre) VALUES ($1,$2) ON CONFLICT DO NOTHING", [id,g]);
