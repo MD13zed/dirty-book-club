@@ -126,13 +126,19 @@ async function fetchCoverByISBN(isbn) {
 }
 
 // ── CSV Import Modal ───────────────────────────────────────────────────────
-function CsvImportModal({ C, onClose, onImported }) {
+function CsvImportModal({ C, onClose, onImported, existingBooks }) {
   const [stage, setStage]     = useState("upload");   // upload | preview | importing | done
   const [parsed, setParsed]   = useState([]);
   const [selected, setSelected] = useState(new Set());
+  const [skipped, setSkipped]  = useState(0);
   const [progress, setProgress] = useState({ done: 0, total: 0, current: "" });
   const [error, setError]     = useState("");
   const fileRef = useRef();
+
+  // Build a lowercase title set from the current library for duplicate detection
+  const existingTitles = new Set(
+    (existingBooks || []).map(b => b.title.toLowerCase().trim())
+  );
 
   const INP = { background: C.bg, border: `1px solid ${C.border}`, borderRadius: 3, color: C.text, fontFamily: "'EB Garamond',serif", fontSize: 14, padding: "7px 11px", outline: "none", boxSizing: "border-box" };
 
@@ -144,10 +150,15 @@ function CsvImportModal({ C, onClose, onImported }) {
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
-        const books = parseGoodreadsCSV(ev.target.result);
-        if (books.length === 0) { setError("No 'read' books found in this CSV. Make sure you're using a Goodreads export."); return; }
-        setParsed(books);
-        setSelected(new Set(books.map((_, i) => i)));
+        const all  = parseGoodreadsCSV(ev.target.result);
+        if (all.length === 0) { setError("No 'read' books found in this CSV. Make sure you're using a Goodreads export."); return; }
+        // Split into new and already-in-library
+        const newBooks  = all.filter(b => !existingTitles.has(b.title.toLowerCase().trim()));
+        const dupCount  = all.length - newBooks.length;
+        setSkipped(dupCount);
+        if (newBooks.length === 0) { setError(`All ${dupCount} book${dupCount!==1?"s":""} in this CSV are already in the library.`); return; }
+        setParsed(newBooks);
+        setSelected(new Set(newBooks.map((_, i) => i)));
         setStage("preview");
       } catch (err) {
         setError("Could not parse CSV: " + err.message);
@@ -242,6 +253,9 @@ function CsvImportModal({ C, onClose, onImported }) {
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
               <div style={{ fontFamily:"monospace", fontSize:12, color:C.dim }}>
                 {selected.size} of {parsed.length} books selected
+                {skipped > 0 && (
+                  <span style={{ color:C.dimmer }}> · {skipped} already in library, skipped</span>
+                )}
               </div>
               <button onClick={toggleAll} style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:3, color:C.dim, fontFamily:"monospace", fontSize:11, padding:"4px 10px", cursor:"pointer" }}>
                 {selected.size === parsed.length ? "Deselect all" : "Select all"}
@@ -673,6 +687,7 @@ export default function Library() {
           C={C}
           onClose={() => setShowCsvModal(false)}
           onImported={handleCsvImported}
+          existingBooks={books}
         />
       )}
     </div>
