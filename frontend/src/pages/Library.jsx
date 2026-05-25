@@ -17,7 +17,7 @@ const SORTS = [
 // ── Open Library search ────────────────────────────────────────────────────
 async function searchOpenLibrary(query) {
   if (!query || query.length < 3) return [];
-  const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=6&fields=key,title,author_name,cover_i,number_of_pages_median,first_publish_year,isbn`;
+  const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=6&fields=key,title,author_name,cover_i,number_of_pages_median,first_publish_year,isbn,subject,series`;
   const res = await fetch(url);
   const data = await res.json();
   return (data.docs || []).map(d => ({
@@ -26,6 +26,8 @@ async function searchOpenLibrary(query) {
     cover_url:   d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : "",
     total_pages: d.number_of_pages_median || "",
     isbn:        (d.isbn || [])[0] || "",
+    series:      (d.series || [])[0] || "",
+    subjects:    d.subject || [],
   }));
 }
 
@@ -388,16 +390,22 @@ export default function Library() {
   };
 
   const pickSearchResult = (result) => {
+    // Match Open Library subjects against our GENRES list (case-insensitive)
+    const matchedGenres = GENRES.filter(g =>
+      result.subjects.some(s => s.toLowerCase().includes(g.toLowerCase()) || g.toLowerCase().includes(s.toLowerCase()))
+    ).slice(0, 5);
+
     setForm(f => ({
       ...f,
       title:       result.title,
       author:      result.author,
       cover_url:   result.cover_url,
       total_pages: result.total_pages ? String(result.total_pages) : f.total_pages,
+      series:      result.series || f.series,
+      genres:      matchedGenres.length > 0 ? matchedGenres : f.genres,
     }));
     setBookQuery("");
     setShowResults(false);
-    // Focus the series field next since title+author+cover are filled
     setTimeout(() => titleRef.current?.focus(), 50);
   };
 
