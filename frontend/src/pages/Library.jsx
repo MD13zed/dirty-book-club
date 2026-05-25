@@ -576,7 +576,9 @@ export default function Library() {
                 {showResults && searchResults.length > 0 && (
                   <div style={{ position:"absolute", top:"100%", left:0, right:0, background:C.card, border:`1px solid ${C.border}`, borderRadius:4, zIndex:50, boxShadow:"0 8px 24px #0005", overflow:"hidden" }}>
                     {searchResults.map((r, i) => (
-                      <div key={i} onMouseDown={() => pickSearchResult(r)}
+                      <div key={i}
+                        onMouseDown={e => { e.preventDefault(); pickSearchResult(r); }}
+                        onTouchEnd={e => { e.preventDefault(); pickSearchResult(r); }}
                         style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 12px", borderBottom: i < searchResults.length-1 ? `1px solid ${C.border2}` : "none", cursor:"pointer", transition:"background 0.1s" }}
                         onMouseEnter={e => e.currentTarget.style.background = C.bg2}
                         onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
