@@ -13,7 +13,7 @@ A private book club library for tracking, reviewing, and discussing reads togeth
 - **Search to pre-fill** — type a title or author to look up book details from Open Library automatically. Fills in title, author, cover, and page count in one click.
 - **Import from Goodreads** — upload your Goodreads library export CSV to bulk-import your read books. Covers fetched automatically via ISBN. Available to all members.
 - Up to **5 genres** per book from a list of 100+
-- **Trigger warnings** — optional tags shown as a collapsed toggle on book cards
+- **Trigger warnings** — optional tags shown as a collapsed toggle on book cards. Once you expand and dismiss them, the toggle stays hidden for that book — per member, persists across sessions
 - All book cards are uniform size — books without covers show a styled placeholder
 - Sort by recently added, recently read, highest rated, title, author, series
 - Filter by genre using the colour strip at the top
@@ -36,7 +36,7 @@ A private book club library for tracking, reviewing, and discussing reads togeth
 ### Book Nominations & TBR Poll
 - Nominate any library book for the next Book of the Month — button inside each card
 - Previous BOTMs cannot be nominated again
-- Upvote your favourite nominations (one vote per member)
+- Upvote your favourite nominations (one vote per member) — nominations are always sorted by vote count so the most popular float to the top
 - Nominations tab in the library shows the full shortlist with vote counts
 - Admin posts a native Discord poll from the nominations shortlist
 - Members vote directly in Discord on what to read next
@@ -65,7 +65,7 @@ A private book club library for tracking, reviewing, and discussing reads togeth
 ### Themes
 6 dark themes per member: Dark Purple, Midnight, Rose Gold, Dark Forest, Deep Ocean, Blood Moon
 
-### Discord Bot — 10 Slash Commands
+### Discord Bot — 11 Slash Commands
 
 | Command | What it does |
 |---|---|
@@ -78,6 +78,7 @@ A private book club library for tracking, reviewing, and discussing reads togeth
 | `/myshelf` | See your full reading list, filterable by status |
 | `/nominations` | See the current nomination shortlist with vote counts |
 | `/leaderboard` | Who has read the most books and left the most reviews |
+| `/members` | Everyone in the club with their reading stats. Add `user:@someone` to look up a specific member — shows their currently reading list with progress bars, recent reviews, and favourite genre |
 | `/getting-started` | Full guide to everything you can do — only visible to you |
 
 ### Mobile

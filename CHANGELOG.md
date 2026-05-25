@@ -4,6 +4,23 @@ All notable changes to The Spicy Shelf are documented here.
 
 ---
 
+## [3.3.0] — 2026-05-24
+
+### Added
+- **`/members` Discord command** — lists all club members ranked by books finished, with review count and average rating. Use `/members user:@someone` to view a specific member's full profile: currently reading list with progress bars, last 3 reviews with notes, and their favourite genre based on books finished.
+- **TW dismiss per member** — trigger warnings now have a "dismiss — don't show again" link when expanded. Clicking it hides the toggle for that book permanently for that member (stored in localStorage, persists across sessions). A faint "TW dismissed — show again" link lets them restore it any time.
+
+### Changed
+- **Nominations sorted by vote count** — the nominations tab now always shows the most-voted book at the top, re-sorting live as votes come in.
+- **Book card progress bar** — reading now shows a progress bar with percentage and current/total pages. Finished shows a full green bar with the date finished. DNF shows how far through the member got.
+- **`/myshelf` progress bar** — books you're currently reading now show a `█████░░░░░ 52% · p.210/400` bar instead of just the page number.
+- **Scroll snap on add form** — closing the add book form or successfully adding a book now smoothly scrolls back to the top of the library grid instead of leaving the page mid-scroll.
+- **Genres expanded to 140 and alphabetized** — added Alien Romance, Alternate History, Anthology, Breeding Kink, Cozy Fantasy, Cyberpunk, Dark Fantasy, Essays, F/F Romance, Fairy Tale Retelling, Family Saga, Found Family, Free Use, Humor / Comedy, Isekai, M/M Romance, Mythology, Nonfiction, Novella, Obsessive Hero, Pet Play, Polyamory, Possessive Hero, Praise Kink, Prey / Predator, Queer Romance, Romance, Sapphic Romance, Size Difference, Slice of Life, Space Opera, Stalker Romance, Steampunk, Time Travel. All genres and trigger warnings alphabetized.
+- **Trigger warnings expanded to 36** — added Death of a Child, Domestic Violence, Forced Pregnancy, Homophobia / Transphobia, Human Trafficking, Medical Trauma, Mental Illness, Racism / Racial Violence, Religious Trauma, Terminal Illness, War / Combat.
+- **Per-member finished date** — when marking a book as Finished, a date picker appears so each member can log when they finished it. Saved separately per member.
+
+---
+
 ## [3.2.0] — 2026-05-24
 
 ### Added

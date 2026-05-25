@@ -494,6 +494,8 @@ function handleGettingStarted(res) {
           "`/myshelf` — see your full reading list by status",
           "`/nominations` — current shortlist with vote counts",
           "`/leaderboard` — who has read the most and reviewed the most",
+          "`/members` — everyone in the club with their stats",
+          "`/members user:@someone` — a specific member's profile and reading list",
           "`/stats` — club-wide reading statistics",
         ].join("\n"),
         inline: false,
