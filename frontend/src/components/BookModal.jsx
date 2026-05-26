@@ -16,6 +16,50 @@ function fmtDate(d) {
   } catch { return null; }
 }
 
+// ── DNF members section ───────────────────────────────────────────────────────
+function DnfMembersSection({ dnfRows, C, onClose, navigate }) {
+  const [openIds, setOpenIds] = useState(new Set());
+  const toggle = (id) => setOpenIds(s => {
+    const n = new Set(s);
+    n.has(id) ? n.delete(id) : n.add(id);
+    return n;
+  });
+  return (
+    <div>
+      <div style={{ fontFamily:"monospace", fontSize:11, color:"#904040", marginBottom:10, letterSpacing:1 }}>💀 DID NOT FINISH</div>
+      <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+        {dnfRows.map(p => (
+          <div key={p.member_id} style={{ background:"#c0404011", border:"1px solid #90404033", borderRadius:6, padding:"10px 14px" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, justifyContent:"space-between" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <Avatar name={p.member_name} src={p.member_avatar} size={24} />
+                <span onClick={() => { onClose(); navigate(`/profile/${p.member_id}`); }}
+                  style={{ fontFamily:"monospace", fontSize:12, color:C.accent, cursor:"pointer", textDecoration:"underline", textDecorationStyle:"dotted" }}>
+                  {p.member_name}
+                </span>
+              </div>
+              {p.dnf_reason && (
+                <button onClick={() => toggle(p.member_id)}
+                  style={{ background:"transparent", border:"1px solid #90404055", borderRadius:20, color:"#c06060", fontFamily:"monospace", fontSize:10, padding:"2px 10px", cursor:"pointer" }}>
+                  {openIds.has(p.member_id) ? "hide reason ▲" : "why? ▼"}
+                </button>
+              )}
+              {!p.dnf_reason && (
+                <span style={{ fontFamily:"monospace", fontSize:10, color:"#904040", opacity:0.5 }}>no reason left</span>
+              )}
+            </div>
+            {p.dnf_reason && openIds.has(p.member_id) && (
+              <div style={{ fontFamily:"'EB Garamond',serif", fontSize:14, color:"#c06060", fontStyle:"italic", marginTop:8, paddingTop:8, borderTop:"1px solid #90404033", lineHeight:1.5 }}>
+                💀 "{p.dnf_reason}"
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function BookModal({ book: initialBook, allReviews, onClose, onBookUpdated, onBookDeleted }) {
   const { C }    = useTheme();
   const { user } = useAuth();
@@ -24,6 +68,7 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
   const [book, setBook]           = useState(initialBook);
   const [reviews, setReviews]     = useState(allReviews || []);
   const [progress, setProgress]   = useState(null);
+  const [allProgress, setAllProgress] = useState([]);
   const [myRating, setMyRating]   = useState(0);
   const [myNotes,  setMyNotes]    = useState("");
   const [saved,    setSaved]      = useState(false);
@@ -57,6 +102,7 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
     const myReview = reviews.find(r => r.member_id === user?.id);
     if (myReview) { setMyRating(myReview.rating); setMyNotes(myReview.notes||""); }
     api.getProgress(book.id).then(rows => {
+      setAllProgress(rows);
       const mine = rows.find(r => r.member_id === user?.id);
       if (mine) { setProgress(mine); setDnfReason(mine.dnf_reason||""); }
     }).catch(() => {});
@@ -187,7 +233,6 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
                   <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
                     {others.map(r => (
                       <div key={r.member_id} style={{ display:"flex", gap:10, alignItems:"flex-start" }}>
-                        {/* Clicking avatar or name goes to their profile */}
                         <div onClick={()=>{ onClose(); navigate(`/profile/${r.member_id}`); }} style={{ cursor:"pointer" }}>
                           <Avatar name={r.member_name} src={r.member_avatar} size={28} />
                         </div>
@@ -205,6 +250,16 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
                     ))}
                   </div>
                 </div>
+              )}
+
+              {/* DNF members — tap to reveal reason */}
+              {allProgress.filter(p => p.member_id !== user?.id && p.status === "dnf").length > 0 && (
+                <DnfMembersSection
+                  dnfRows={allProgress.filter(p => p.member_id !== user?.id && p.status === "dnf")}
+                  C={C}
+                  onClose={onClose}
+                  navigate={navigate}
+                />
               )}
             </>
           )}
