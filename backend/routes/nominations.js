@@ -10,6 +10,7 @@ async function fetchNominations(memberId = null) {
             b.id AS book_id, b.title, b.author, b.series, b.cover_url,
             array_agg(DISTINCT g.genre) FILTER (WHERE g.genre IS NOT NULL) AS genres,
             COUNT(DISTINCT v.member_id)::int AS vote_count,
+            m.id AS nominated_by_id,
             m.display_name AS nominated_by_name,
             ${memberId ? `BOOL_OR(v.member_id = $1) AS i_voted,
             BOOL_OR(n.nominated_by = $1) AS i_nominated` : `FALSE AS i_voted, FALSE AS i_nominated`}
@@ -18,7 +19,7 @@ async function fetchNominations(memberId = null) {
      JOIN members m ON m.id = n.nominated_by
      LEFT JOIN book_genres g ON g.book_id = b.id
      LEFT JOIN nomination_votes v ON v.nomination_id = n.id
-     GROUP BY n.id, b.id, b.title, b.author, b.series, b.cover_url, m.display_name
+     GROUP BY n.id, b.id, b.title, b.author, b.series, b.cover_url, m.id, m.display_name
      ORDER BY vote_count DESC, n.nominated_at ASC`,
     memberId ? [memberId] : []
   );

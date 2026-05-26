@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { useTheme, useAuth } from "../App";
 import { api } from "../api";
 import BookCard from "../components/BookCard";
@@ -340,6 +341,7 @@ export default function Library() {
   const { C }    = useTheme();
   const { user } = useAuth();
   const isMobile = useIsMobile();
+  const nav      = useNavigate();
 
   const [view,     setView]     = useState("library");
   const [books,    setBooks]    = useState([]);
@@ -535,7 +537,11 @@ export default function Library() {
                   <div style={{ fontFamily:"'Playfair Display',serif", fontSize:16, color:C.text, fontWeight:700 }}>{n.title}</div>
                   {n.author && <div style={{ fontFamily:"'EB Garamond',serif", fontSize:13, color:C.muted, fontStyle:"italic" }}>by {n.author}</div>}
                   <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, marginTop:4 }}>
-                    Nominated by {n.nominated_by_name}
+                    Nominated by{" "}
+                    <span onClick={e => { e.stopPropagation(); if (n.nominated_by_id) nav(`/profile/${n.nominated_by_id}`); }}
+                      style={{ color:n.nominated_by_id?C.accent:C.dimmer, cursor:n.nominated_by_id?"pointer":"default", textDecoration:n.nominated_by_id?"underline":"none" }}>
+                      {n.nominated_by_name}
+                    </span>
                   </div>
                 </div>
                 <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:8 }}>
@@ -571,32 +577,35 @@ export default function Library() {
                 const pct = r.total_pages && r.current_page ? Math.round((r.current_page/r.total_pages)*100) : null;
                 const book = books.find(b => b.id === r.book_id);
                 return (
-                  <div key={i} onClick={() => book && setSelected(book)}
-                    style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:6, padding:"14px 16px", display:"flex", gap:12, alignItems:"center", cursor:"pointer" }}>
-                    {r.cover_url
-                      ? <img src={r.cover_url} alt={r.title} style={{ width:44, height:62, objectFit:"cover", borderRadius:3, flexShrink:0 }} />
-                      : <div style={{ width:44, height:62, background:C.border, borderRadius:3, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>📚</div>
-                    }
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontFamily:"'Playfair Display',serif", fontSize:15, color:C.text, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{r.title}</div>
-                      {r.author && <div style={{ fontFamily:"'EB Garamond',serif", fontSize:13, color:C.muted, fontStyle:"italic" }}>by {r.author}</div>}
-                      {pct !== null && (
-                        <>
-                          <div style={{ background:C.bg, borderRadius:10, height:4, overflow:"hidden", margin:"8px 0 3px" }}>
-                            <div style={{ height:"100%", width:`${pct}%`, background:`linear-gradient(90deg,${C.accent},${C.accent2})`, borderRadius:10 }} />
-                          </div>
-                          <div style={{ fontFamily:"monospace", fontSize:10, color:C.dimmer }}>{pct}% · p.{r.current_page} of {r.total_pages}</div>
-                        </>
-                      )}
+                  <div key={i} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:6, padding:"14px 16px", display:"flex", gap:12, alignItems:"center" }}>
+                    {/* Book area — opens modal */}
+                    <div onClick={() => book && setSelected(book)} style={{ display:"flex", gap:12, alignItems:"center", flex:1, minWidth:0, cursor:"pointer" }}>
+                      {r.cover_url
+                        ? <img src={r.cover_url} alt={r.title} style={{ width:44, height:62, objectFit:"cover", borderRadius:3, flexShrink:0 }} />
+                        : <div style={{ width:44, height:62, background:C.border, borderRadius:3, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>📚</div>
+                      }
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontFamily:"'Playfair Display',serif", fontSize:15, color:C.text, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{r.title}</div>
+                        {r.author && <div style={{ fontFamily:"'EB Garamond',serif", fontSize:13, color:C.muted, fontStyle:"italic" }}>by {r.author}</div>}
+                        {pct !== null && (
+                          <>
+                            <div style={{ background:C.bg, borderRadius:10, height:4, overflow:"hidden", margin:"8px 0 3px" }}>
+                              <div style={{ height:"100%", width:`${pct}%`, background:`linear-gradient(90deg,${C.accent},${C.accent2})`, borderRadius:10 }} />
+                            </div>
+                            <div style={{ fontFamily:"monospace", fontSize:10, color:C.dimmer }}>{pct}% · p.{r.current_page} of {r.total_pages}</div>
+                          </>
+                        )}
+                      </div>
                     </div>
-                    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, flexShrink:0 }}>
+                    {/* Member avatar — navigates to profile */}
+                    <div onClick={() => nav(`/profile/${r.member_id}`)} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, flexShrink:0, cursor:"pointer" }}>
                       {r.avatar_url
                         ? <img src={r.avatar_url} alt="" style={{ width:28, height:28, borderRadius:"50%", border:`2px solid ${C.accent}` }} />
                         : <div style={{ width:28, height:28, borderRadius:"50%", background:C.accent2, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, color:C.bg, fontWeight:700 }}>
                             {(r.display_name||r.username||"?")[0].toUpperCase()}
                           </div>
                       }
-                      <div style={{ fontFamily:"monospace", fontSize:9, color:C.dimmer, textAlign:"center", maxWidth:50, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.display_name||r.username}</div>
+                      <div style={{ fontFamily:"monospace", fontSize:9, color:C.accent, textAlign:"center", maxWidth:50, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.display_name||r.username}</div>
                     </div>
                   </div>
                 );
