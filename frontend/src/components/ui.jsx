@@ -148,23 +148,34 @@ export const genreColor = (g) => GENRE_COLORS[g] || "#706090";
 
 export function GenrePicker({ value, onChange }) {
   const { C } = useTheme();
+  const [q, setQ] = useState("");
   const toggle = (g) => {
     if (value.includes(g)) onChange(value.filter(x => x !== g));
     else if (value.length < 5) onChange([...value, g]);
   };
+  const visible = q.trim()
+    ? GENRES.filter(g => g.toLowerCase().includes(q.toLowerCase()))
+    : GENRES;
   return (
-    <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
-      {GENRES.map(g => {
-        const sel  = value.includes(g);
-        const full = !sel && value.length >= 5;
-        return (
-          <button key={g} onClick={() => toggle(g)} disabled={full}
-            style={{ background:sel?genreColor(g)+"33":"transparent", border:`1px solid ${sel?genreColor(g):C.border}`, borderRadius:20, color:sel?genreColor(g):full?C.dimmer:C.dim, fontFamily:"monospace", fontSize:11, padding:"3px 10px", cursor:full?"not-allowed":"pointer", transition:"all 0.15s" }}>
-            {g}
-          </button>
-        );
-      })}
-      {value.length > 0 && <span style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, alignSelf:"center" }}>{value.length}/5</span>}
+    <div>
+      <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search genres…"
+        style={{ width:"100%", background:C.bg, border:`1px solid ${C.border}`, borderRadius:6, color:C.text, fontFamily:"monospace", fontSize:12, padding:"6px 10px", outline:"none", marginBottom:8, boxSizing:"border-box" }} />
+      <div style={{ display:"flex", flexWrap:"wrap", gap:5, maxHeight:180, overflowY:"auto" }}>
+        {visible.map(g => {
+          const sel  = value.includes(g);
+          const full = !sel && value.length >= 5;
+          return (
+            <button key={g} onClick={() => toggle(g)} disabled={full}
+              style={{ background:sel?genreColor(g)+"33":"transparent", border:`1px solid ${sel?genreColor(g):C.border}`, borderRadius:20, color:sel?genreColor(g):full?C.dimmer:C.dim, fontFamily:"monospace", fontSize:11, padding:"3px 10px", cursor:full?"not-allowed":"pointer", transition:"all 0.15s" }}>
+              {g}
+            </button>
+          );
+        })}
+        {visible.length === 0 && <span style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer }}>No genres match</span>}
+      </div>
+      {value.length > 0 && (
+        <div style={{ marginTop:6, fontFamily:"monospace", fontSize:11, color:C.dimmer }}>{value.length}/5 selected: {value.join(", ")}</div>
+      )}
     </div>
   );
 }
@@ -192,21 +203,30 @@ export const TW_TAGS = [
 
 export function TwPicker({ value, onChange }) {
   const { C } = useTheme();
+  const [q, setQ] = useState("");
   const toggle = (t) => {
     if (value.includes(t)) onChange(value.filter(x => x !== t));
     else onChange([...value, t]);
   };
+  const visible = q.trim()
+    ? TW_TAGS.filter(t => t.toLowerCase().includes(q.toLowerCase()))
+    : TW_TAGS;
   return (
-    <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
-      {TW_TAGS.map(t => {
-        const sel = value.includes(t);
-        return (
-          <button key={t} onClick={() => toggle(t)}
-            style={{ background:sel?"#c0404033":"transparent", border:`1px solid ${sel?"#c04040":C.border}`, borderRadius:20, color:sel?"#e06060":C.dim, fontFamily:"monospace", fontSize:11, padding:"3px 10px", cursor:"pointer", transition:"all 0.15s" }}>
-            {t}
-          </button>
-        );
-      })}
+    <div>
+      <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search trigger warnings…"
+        style={{ width:"100%", background:C.bg, border:`1px solid #c0404055`, borderRadius:6, color:C.text, fontFamily:"monospace", fontSize:12, padding:"6px 10px", outline:"none", marginBottom:8, boxSizing:"border-box" }} />
+      <div style={{ display:"flex", flexWrap:"wrap", gap:5, maxHeight:150, overflowY:"auto" }}>
+        {visible.map(t => {
+          const sel = value.includes(t);
+          return (
+            <button key={t} onClick={() => toggle(t)}
+              style={{ background:sel?"#c0404033":"transparent", border:`1px solid ${sel?"#c04040":C.border}`, borderRadius:20, color:sel?"#e06060":C.dim, fontFamily:"monospace", fontSize:11, padding:"3px 10px", cursor:"pointer", transition:"all 0.15s" }}>
+              {t}
+            </button>
+          );
+        })}
+        {visible.length === 0 && <span style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer }}>No warnings match</span>}
+      </div>
     </div>
   );
 }

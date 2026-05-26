@@ -621,7 +621,7 @@ export default function Library() {
 
           {/* Add form */}
           {showForm && (
-            <div style={{ background:C.bg2, borderBottom:`1px solid ${C.border}`, padding:"20px 24px" }}>
+            <div style={{ background:C.bg2, borderBottom:`1px solid ${C.border}`, padding: isMobile ? "16px 12px" : "20px 24px" }}>
               <div style={{ fontFamily:"'Playfair Display',serif", fontSize:17, marginBottom:14, color:C.accent, fontStyle:"italic" }}>Add a Book to the Club</div>
 
               {/* ── Open Library search ── */}
@@ -667,8 +667,8 @@ export default function Library() {
               </div>
 
               {/* Manual fields */}
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))", gap:12, marginBottom:14 }}>
-                <div style={{ gridColumn:"span 2" }}>
+              <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill,minmax(200px,1fr))", gap:12, marginBottom:14 }}>
+                <div style={{ gridColumn: isMobile ? "auto" : "span 2" }}>
                   <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.dimmer, marginBottom:3 }}>TITLE *</label>
                   <input ref={titleRef} value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} style={INP} />
                 </div>
