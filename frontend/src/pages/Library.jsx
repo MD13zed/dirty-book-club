@@ -346,6 +346,7 @@ export default function Library() {
   const [reviews,  setReviews]  = useState({});
   const [progress, setProgress] = useState([]);
   const [noms,     setNoms]     = useState([]);
+  const [readingNow, setReadingNow] = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [selected, setSelected] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -376,8 +377,8 @@ export default function Library() {
   const load = async () => {
     setLoading(true);
     try {
-      const [b, r, p, n] = await Promise.all([api.getBooks(), api.getReviews(), api.getProgress(), api.getNominations()]);
-      setBooks(b); setReviews(r); setProgress(p); setNoms(n);
+      const [b, r, p, n, rn] = await Promise.all([api.getBooks(), api.getReviews(), api.getProgress(), api.getNominations(), api.getReadingNow()]);
+      setBooks(b); setReviews(r); setProgress(p); setNoms(n); setReadingNow(rn);
     } catch (e) { console.error(e); }
     setLoading(false);
   };
@@ -474,21 +475,29 @@ export default function Library() {
   const activeGenres = GENRES.filter(g => books.some(b => (b.genres||[]).includes(g)));
 
   const tabBtn = (v, label) => (
-    <button onClick={()=>setView(v)} style={{ fontFamily:"monospace", fontSize:13, padding:"8px 18px", cursor:"pointer", border:"none", background:view===v?C.accent2:"transparent", color:view===v?C.bg:C.dim, borderRadius:4, transition:"all 0.15s" }}>
+    <button onClick={()=>setView(v)} style={{ fontFamily:"monospace", fontSize: isMobile ? 12 : 13, padding: isMobile ? "7px 10px" : "8px 18px", cursor:"pointer", border:"none", background:view===v?C.accent2:"transparent", color:view===v?C.bg:C.dim, borderRadius:4, transition:"all 0.15s" }}>
       {label}
     </button>
   );
+
+  // BOTM books sorted newest first
+  const botmBooks = [...books].filter(b => b.botm_month).sort((a,b) => {
+    const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    const parse = (s) => { const [m,y] = s.split(" "); return parseInt(y)*12 + months.indexOf(m); };
+    return parse(b.botm_month) > parse(a.botm_month) ? -1 : 1;
+  });
 
   return (
     <div style={{ minHeight:"calc(100vh - 55px)" }}>
       {/* Sub-header */}
       <div style={{ background:`linear-gradient(180deg,${C.bg2},${C.bg})`, borderBottom:`1px solid ${C.border}`, padding: isMobile ? "10px 12px" : "14px 24px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:8 }}>
         <div style={{ display:"flex", gap:4 }}>
-          {tabBtn("library",     isMobile ? `📚 (${books.length})` : `📚 Library (${books.length})`)}
-          {tabBtn("nominations", isMobile ? `🗳 (${noms.length})`  : `🗳 Nominations (${noms.length})`)}
+          {tabBtn("library",     isMobile ? `📚 (${books.length})`        : `📚 Library (${books.length})`)}
+          {tabBtn("reading-now", isMobile ? `📖 (${readingNow.length})`   : `📖 Reading Now (${readingNow.length})`)}
+          {tabBtn("nominations", isMobile ? `🗳 (${noms.length})`         : `🗳 Nominations (${noms.length})`)}
+          {tabBtn("botm",        isMobile ? `🏆`                          : `🏆 BOTM History`)}
         </div>
-        {view==="library" && (
-          <div style={{ display:"flex", gap:6 }}>
+        {view==="library" && (          <div style={{ display:"flex", gap:6 }}>
             <button
               onClick={() => setShowCsvModal(true)}
               title="Import from Goodreads"
@@ -544,17 +553,121 @@ export default function Library() {
         </div>
       )}
 
+      {/* ── READING NOW VIEW ── */}
+      {view==="reading-now" && (
+        <div style={{ padding: isMobile ? "16px 12px" : "24px", maxWidth:720, margin:"0 auto" }}>
+          <div style={{ fontFamily:"'EB Garamond',serif", fontSize:14, color:C.dimmer, fontStyle:"italic", marginBottom:20 }}>
+            What club members are reading right now.
+          </div>
+          {readingNow.length === 0 ? (
+            <div style={{ textAlign:"center", padding:60, color:C.dimmer }}>
+              <div style={{ fontSize:36, marginBottom:10 }}>📖</div>
+              <div style={{ fontFamily:"'Playfair Display',serif", fontSize:18 }}>Nobody's reading right now</div>
+              <div style={{ fontFamily:"'EB Garamond',serif", fontSize:14, marginTop:6, fontStyle:"italic" }}>Pick up a book and get started!</div>
+            </div>
+          ) : (
+            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+              {readingNow.map((r,i) => {
+                const pct = r.total_pages && r.current_page ? Math.round((r.current_page/r.total_pages)*100) : null;
+                const book = books.find(b => b.id === r.book_id);
+                return (
+                  <div key={i} onClick={() => book && setSelected(book)}
+                    style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:6, padding:"14px 16px", display:"flex", gap:12, alignItems:"center", cursor:"pointer" }}>
+                    {r.cover_url
+                      ? <img src={r.cover_url} alt={r.title} style={{ width:44, height:62, objectFit:"cover", borderRadius:3, flexShrink:0 }} />
+                      : <div style={{ width:44, height:62, background:C.border, borderRadius:3, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>📚</div>
+                    }
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontFamily:"'Playfair Display',serif", fontSize:15, color:C.text, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{r.title}</div>
+                      {r.author && <div style={{ fontFamily:"'EB Garamond',serif", fontSize:13, color:C.muted, fontStyle:"italic" }}>by {r.author}</div>}
+                      {pct !== null && (
+                        <>
+                          <div style={{ background:C.bg, borderRadius:10, height:4, overflow:"hidden", margin:"8px 0 3px" }}>
+                            <div style={{ height:"100%", width:`${pct}%`, background:`linear-gradient(90deg,${C.accent},${C.accent2})`, borderRadius:10 }} />
+                          </div>
+                          <div style={{ fontFamily:"monospace", fontSize:10, color:C.dimmer }}>{pct}% · p.{r.current_page} of {r.total_pages}</div>
+                        </>
+                      )}
+                    </div>
+                    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, flexShrink:0 }}>
+                      {r.avatar_url
+                        ? <img src={r.avatar_url} alt="" style={{ width:28, height:28, borderRadius:"50%", border:`2px solid ${C.accent}` }} />
+                        : <div style={{ width:28, height:28, borderRadius:"50%", background:C.accent2, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, color:C.bg, fontWeight:700 }}>
+                            {(r.display_name||r.username||"?")[0].toUpperCase()}
+                          </div>
+                      }
+                      <div style={{ fontFamily:"monospace", fontSize:9, color:C.dimmer, textAlign:"center", maxWidth:50, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.display_name||r.username}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── BOTM HISTORY VIEW ── */}
+      {view==="botm" && (
+        <div style={{ padding: isMobile ? "16px 12px" : "24px", maxWidth:720, margin:"0 auto" }}>
+          <div style={{ fontFamily:"'EB Garamond',serif", fontSize:14, color:C.dimmer, fontStyle:"italic", marginBottom:20 }}>
+            Every book the club has read together, newest first.
+          </div>
+          {botmBooks.length === 0 ? (
+            <div style={{ textAlign:"center", padding:60, color:C.dimmer }}>
+              <div style={{ fontSize:36, marginBottom:10 }}>🏆</div>
+              <div style={{ fontFamily:"'Playfair Display',serif", fontSize:18 }}>No BOTMs yet</div>
+              <div style={{ fontFamily:"'EB Garamond',serif", fontSize:14, marginTop:6, fontStyle:"italic" }}>Admins can set the Book of the Month from the admin dashboard</div>
+            </div>
+          ) : (
+            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+              {botmBooks.map((book, i) => {
+                const bookReviews = reviews[book.id] || [];
+                const avg = bookReviews.filter(r=>r.rating>0).reduce((s,r)=>s+r.rating,0) / (bookReviews.filter(r=>r.rating>0).length||1);
+                return (
+                  <div key={book.id} onClick={() => setSelected(book)}
+                    style={{ background:C.card, border:`1px solid ${C.border}`, borderLeft:`4px solid #ffd700`, borderRadius:6, padding:"14px 16px", display:"flex", gap:12, alignItems:"center", cursor:"pointer" }}>
+                    {book.cover_url
+                      ? <img src={book.cover_url} alt={book.title} style={{ width:44, height:62, objectFit:"cover", borderRadius:3, flexShrink:0 }} />
+                      : <div style={{ width:44, height:62, background:C.border, borderRadius:3, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>📚</div>
+                    }
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontFamily:"monospace", fontSize:10, color:"#ffd700", marginBottom:3 }}>🏆 {book.botm_month}</div>
+                      <div style={{ fontFamily:"'Playfair Display',serif", fontSize:15, color:C.text, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{book.title}</div>
+                      {book.author && <div style={{ fontFamily:"'EB Garamond',serif", fontSize:13, color:C.muted, fontStyle:"italic", marginBottom:6 }}>by {book.author}</div>}
+                      <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+                        {bookReviews.filter(r=>r.rating>0).length > 0 && <span style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer }}>⭐ {avg.toFixed(1)} avg</span>}
+                        {bookReviews.length > 0 && <span style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer }}>💬 {bookReviews.length} review{bookReviews.length!==1?"s":""}</span>}
+                        {book.total_pages && <span style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer }}>📖 {book.total_pages}pp</span>}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── LIBRARY VIEW ── */}
       {view==="library" && (
         <>
           {/* Genre strip */}
           {activeGenres.length > 0 && (
-            <div style={{ display:"flex", borderBottom:`1px solid ${C.border2}` }}>
-              {activeGenres.map(g => {
-                const count = books.filter(b=>(b.genres||[]).includes(g)).length;
-                return <div key={g} onClick={()=>setFilterG(filterG===g?"":g)} title={`${g}: ${count}`}
-                  style={{ flex:count, height:5, background:filterG===g||!filterG?genreColor(g):genreColor(g)+"33", cursor:"pointer", transition:"background 0.2s" }} />;
-              })}
+            <div>
+              <div style={{ display:"flex", borderBottom:`1px solid ${C.border2}` }}>
+                {activeGenres.map(g => {
+                  const count = books.filter(b=>(b.genres||[]).includes(g)).length;
+                  return <div key={g} onClick={()=>setFilterG(filterG===g?"":g)} title={`${g}: ${count}`}
+                    style={{ flex:count, height:5, background:filterG===g||!filterG?genreColor(g):genreColor(g)+"33", cursor:"pointer", transition:"background 0.2s" }} />;
+                })}
+              </div>
+              {isMobile && filterG && (
+                <div style={{ padding:"4px 12px", display:"flex", alignItems:"center", gap:6 }}>
+                  <div style={{ width:8, height:8, borderRadius:"50%", background:genreColor(filterG), flexShrink:0 }} />
+                  <span style={{ fontFamily:"monospace", fontSize:10, color:genreColor(filterG) }}>{filterG}</span>
+                  <button onClick={()=>setFilterG("")} style={{ background:"transparent", border:"none", color:C.dimmer, fontFamily:"monospace", fontSize:10, cursor:"pointer", marginLeft:2 }}>✕ clear</button>
+                </div>
+              )}
             </div>
           )}
 

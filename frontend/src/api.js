@@ -48,6 +48,9 @@ export const api = {
   getMember:   (id)       => req("GET",    `/members/${id}`),
   updateMe:    (data)     => req("PATCH",  "/members/me", data),
 
+  // Reading now
+  getReadingNow: () => req("GET", "/reading-now"),
+
   // Nominations
   getNominations:     ()    => req("GET",    "/nominations"),
   nominate:           (bid) => req("POST",   "/nominations", { book_id: bid }),

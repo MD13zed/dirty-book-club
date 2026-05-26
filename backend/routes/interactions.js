@@ -110,18 +110,74 @@ async function handleStats(res) {
       (SELECT COUNT(*)::int FROM reading_progress WHERE status='finished')     AS finished,
       (SELECT COUNT(*)::int FROM reading_progress WHERE status='reading')      AS reading_now
   `);
+
+  // Top rated book (min 2 reviews)
+  const { rows:[topRated] } = await pool.query(`
+    SELECT b.title, b.author, ROUND(AVG(r.rating)::numeric,1) AS avg, COUNT(*)::int AS cnt
+    FROM reviews r JOIN books b ON b.id = r.book_id
+    WHERE r.rating > 0
+    GROUP BY b.id, b.title, b.author
+    HAVING COUNT(*) >= 2
+    ORDER BY avg DESC, cnt DESC LIMIT 1
+  `);
+
+  // Most reviewed book
+  const { rows:[mostReviewed] } = await pool.query(`
+    SELECT b.title, COUNT(*)::int AS cnt
+    FROM reviews r JOIN books b ON b.id = r.book_id
+    WHERE r.rating > 0
+    GROUP BY b.id, b.title
+    ORDER BY cnt DESC LIMIT 1
+  `);
+
+  // Most active reader this month (most books finished)
+  const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0,0,0,0);
+  const { rows:[topReader] } = await pool.query(`
+    SELECT m.display_name, m.username, COUNT(*)::int AS cnt
+    FROM reading_progress rp JOIN members m ON m.id = rp.member_id
+    WHERE rp.status = 'finished' AND rp.updated_at >= $1
+    GROUP BY m.id, m.display_name, m.username
+    ORDER BY cnt DESC LIMIT 1
+  `, [startOfMonth.toISOString()]);
+
+  // Total pages read across all members
+  const { rows:[pages] } = await pool.query(`
+    SELECT COALESCE(SUM(b.total_pages),0)::int AS total
+    FROM reading_progress rp JOIN books b ON b.id = rp.book_id
+    WHERE rp.status = 'finished' AND b.total_pages IS NOT NULL
+  `);
+
+  const fields = [
+    { name:"📚 Books",              value:String(s.books),                        inline:true },
+    { name:"⭐ Reviews",            value:String(s.reviews),                      inline:true },
+    { name:"👥 Members",            value:String(s.members),                      inline:true },
+    { name:"✅ Finished",           value:String(s.finished),                     inline:true },
+    { name:"📖 Reading now",        value:String(s.reading_now),                  inline:true },
+    { name:"📈 Club avg rating",    value:s.avg_rating?`${s.avg_rating}★`:"—",   inline:true },
+    { name:"📄 Total pages read",   value:pages.total.toLocaleString(),           inline:true },
+  ];
+
+  if (topRated) fields.push({
+    name:"🥇 Top rated",
+    value:`**${topRated.title}**${topRated.author?` *by ${topRated.author}*`:""}  \n${topRated.avg}★ from ${topRated.cnt} review${topRated.cnt!==1?"s":""}`,
+    inline:false,
+  });
+  if (mostReviewed) fields.push({
+    name:"💬 Most reviewed",
+    value:`**${mostReviewed.title}** — ${mostReviewed.cnt} review${mostReviewed.cnt!==1?"s":""}`,
+    inline:false,
+  });
+  if (topReader) fields.push({
+    name:"🔥 Most active this month",
+    value:`**${topReader.display_name||topReader.username}** — ${topReader.cnt} book${topReader.cnt!==1?"s":""} finished`,
+    inline:false,
+  });
+
   return res.json(reply([embed(
     "📊 The Spicy Shelf — Stats",
     `[Open the library](${SITE_URL})`,
     color.purple,
-    [
-      { name:"📚 Books",             value:String(s.books),                           inline:true },
-      { name:"⭐ Reviews",           value:String(s.reviews),                         inline:true },
-      { name:"👥 Members",           value:String(s.members),                         inline:true },
-      { name:"✅ Finished",          value:String(s.finished),                        inline:true },
-      { name:"📖 Currently reading", value:String(s.reading_now),                     inline:true },
-      { name:"📈 Avg Rating",        value:s.avg_rating?`${s.avg_rating}★`:"—",      inline:true },
-    ],
+    fields,
   )]));
 }
 
