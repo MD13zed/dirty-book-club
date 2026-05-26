@@ -5,6 +5,16 @@ import BookCard from "../components/BookCard";
 import BookModal from "../components/BookModal";
 import { GenrePicker, GENRES, genreColor, TwPicker, Avatar } from "../components/ui";
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
+  return isMobile;
+}
+
 const SORTS = [
   { value:"added_at",   label:"Recently Added" },
   { value:"date_read",  label:"Recently Read"  },
@@ -329,6 +339,7 @@ function CsvImportModal({ C, onClose, onImported, existingBooks }) {
 export default function Library() {
   const { C }    = useTheme();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
 
   const [view,     setView]     = useState("library");
   const [books,    setBooks]    = useState([]);
@@ -471,21 +482,22 @@ export default function Library() {
   return (
     <div style={{ minHeight:"calc(100vh - 55px)" }}>
       {/* Sub-header */}
-      <div style={{ background:`linear-gradient(180deg,${C.bg2},${C.bg})`, borderBottom:`1px solid ${C.border}`, padding:"14px 24px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:10 }}>
+      <div style={{ background:`linear-gradient(180deg,${C.bg2},${C.bg})`, borderBottom:`1px solid ${C.border}`, padding: isMobile ? "10px 12px" : "14px 24px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:8 }}>
         <div style={{ display:"flex", gap:4 }}>
-          {tabBtn("library",     `📚 Library (${books.length})`)}
-          {tabBtn("nominations", `🗳 Nominations (${noms.length})`)}
+          {tabBtn("library",     isMobile ? `📚 (${books.length})` : `📚 Library (${books.length})`)}
+          {tabBtn("nominations", isMobile ? `🗳 (${noms.length})`  : `🗳 Nominations (${noms.length})`)}
         </div>
         {view==="library" && (
-          <div style={{ display:"flex", gap:8 }}>
+          <div style={{ display:"flex", gap:6 }}>
             <button
               onClick={() => setShowCsvModal(true)}
-              style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:4, color:C.dim, fontFamily:"monospace", fontSize:12, padding:"8px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:6 }}>
-              📥 Import from Goodreads
+              title="Import from Goodreads"
+              style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:4, color:C.dim, fontFamily:"monospace", fontSize:12, padding: isMobile ? "7px 10px" : "8px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:6 }}>
+              {isMobile ? "📥" : "📥 Import from Goodreads"}
             </button>
             <button onClick={()=>{ setShowForm(!showForm); setTimeout(()=>titleRef.current?.focus(),50); }}
-              style={{ background:`linear-gradient(135deg,${C.accent},${C.accent2})`, border:"none", borderRadius:4, color:C.bg, fontFamily:"'Playfair Display',serif", fontSize:14, fontWeight:700, padding:"9px 18px", cursor:"pointer" }}>
-              + Add Book
+              style={{ background:`linear-gradient(135deg,${C.accent},${C.accent2})`, border:"none", borderRadius:4, color:C.bg, fontFamily:"'Playfair Display',serif", fontSize: isMobile ? 13 : 14, fontWeight:700, padding: isMobile ? "7px 14px" : "9px 18px", cursor:"pointer" }}>
+              {isMobile ? "+" : "+ Add Book"}
             </button>
           </div>
         )}
@@ -547,24 +559,65 @@ export default function Library() {
           )}
 
           {/* Filters */}
-          <div style={{ padding:"12px 24px", display:"flex", gap:10, flexWrap:"wrap", borderBottom:`1px solid ${C.border2}` }}>
-            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search title, author, or series…"
-              style={{ flex:1, minWidth:160, background:C.vdark, border:`1px solid ${C.border}`, borderRadius:3, color:C.text, fontFamily:"'EB Garamond',serif", fontSize:15, padding:"7px 13px", outline:"none" }} />
-            <select value={filterG} onChange={e=>setFilterG(e.target.value)} style={{ background:C.vdark, border:`1px solid ${C.border}`, borderRadius:3, color:filterG?C.accent:C.dim, fontFamily:"monospace", fontSize:12, padding:"7px 10px", outline:"none" }}>
-              <option value="">All Genres</option>
-              {GENRES.map(g=><option key={g} value={g}>{g}</option>)}
-            </select>
-            <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{ background:C.vdark, border:`1px solid ${C.border}`, borderRadius:3, color:C.dim, fontFamily:"monospace", fontSize:12, padding:"7px 10px", outline:"none" }}>
-              {SORTS.map(s=><option key={s.value} value={s.value}>{s.label}</option>)}
-            </select>
-            <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{ background:C.vdark, border:`1px solid ${C.border}`, borderRadius:3, color:statusFilter?C.accent:C.dim, fontFamily:"monospace", fontSize:12, padding:"7px 10px", outline:"none" }}>
-              <option value="">All Statuses</option>
-              <option value="reading">📖 Reading</option>
-              <option value="finished">✅ Finished</option>
-              <option value="want_to_read">📚 Want to Read</option>
-              <option value="dnf">💀 DNF</option>
-            </select>
-          </div>
+          {isMobile ? (
+            <div style={{ borderBottom:`1px solid ${C.border2}` }}>
+              {/* Search */}
+              <div style={{ padding:"10px 12px 6px" }}>
+                <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search title, author, or series…"
+                  style={{ width:"100%", background:C.vdark, border:`1px solid ${C.border}`, borderRadius:6, color:C.text, fontFamily:"'EB Garamond',serif", fontSize:15, padding:"8px 13px", outline:"none", boxSizing:"border-box" }} />
+              </div>
+              {/* Sort chips */}
+              <div style={{ display:"flex", gap:6, overflowX:"auto", padding:"4px 12px", scrollbarWidth:"none" }}>
+                {SORTS.map(s => (
+                  <button key={s.value} onClick={()=>setSortBy(s.value)}
+                    style={{ flexShrink:0, background:sortBy===s.value?C.accent+"22":"transparent", border:`1px solid ${sortBy===s.value?C.accent:C.border}`, borderRadius:20, color:sortBy===s.value?C.accent:C.dim, fontFamily:"monospace", fontSize:10, padding:"4px 11px", cursor:"pointer", whiteSpace:"nowrap" }}>
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+              {/* Genre chips — only active genres */}
+              <div style={{ display:"flex", gap:6, overflowX:"auto", padding:"4px 12px", scrollbarWidth:"none" }}>
+                <button onClick={()=>setFilterG("")}
+                  style={{ flexShrink:0, background:!filterG?C.accent+"22":"transparent", border:`1px solid ${!filterG?C.accent:C.border}`, borderRadius:20, color:!filterG?C.accent:C.dim, fontFamily:"monospace", fontSize:10, padding:"4px 11px", cursor:"pointer" }}>
+                  All
+                </button>
+                {activeGenres.map(g => (
+                  <button key={g} onClick={()=>setFilterG(filterG===g?"":g)}
+                    style={{ flexShrink:0, background:filterG===g?genreColor(g)+"33":"transparent", border:`1px solid ${filterG===g?genreColor(g):C.border}`, borderRadius:20, color:filterG===g?genreColor(g):C.dim, fontFamily:"monospace", fontSize:10, padding:"4px 11px", cursor:"pointer", whiteSpace:"nowrap" }}>
+                    {g}
+                  </button>
+                ))}
+              </div>
+              {/* Status chips */}
+              <div style={{ display:"flex", gap:6, overflowX:"auto", padding:"4px 12px 10px", scrollbarWidth:"none" }}>
+                {[["","All"],["reading","📖 Reading"],["finished","✅ Finished"],["want_to_read","📚 Want to Read"],["dnf","💀 DNF"]].map(([val,label]) => (
+                  <button key={val} onClick={()=>setStatusFilter(val)}
+                    style={{ flexShrink:0, background:statusFilter===val?C.accent+"22":"transparent", border:`1px solid ${statusFilter===val?C.accent:C.border}`, borderRadius:20, color:statusFilter===val?C.accent:C.dim, fontFamily:"monospace", fontSize:10, padding:"4px 11px", cursor:"pointer", whiteSpace:"nowrap" }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div style={{ padding:"12px 24px", display:"flex", gap:10, flexWrap:"wrap", borderBottom:`1px solid ${C.border2}` }}>
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search title, author, or series…"
+                style={{ flex:1, minWidth:160, background:C.vdark, border:`1px solid ${C.border}`, borderRadius:3, color:C.text, fontFamily:"'EB Garamond',serif", fontSize:15, padding:"7px 13px", outline:"none" }} />
+              <select value={filterG} onChange={e=>setFilterG(e.target.value)} style={{ background:C.vdark, border:`1px solid ${C.border}`, borderRadius:3, color:filterG?C.accent:C.dim, fontFamily:"monospace", fontSize:12, padding:"7px 10px", outline:"none" }}>
+                <option value="">All Genres</option>
+                {GENRES.map(g=><option key={g} value={g}>{g}</option>)}
+              </select>
+              <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{ background:C.vdark, border:`1px solid ${C.border}`, borderRadius:3, color:C.dim, fontFamily:"monospace", fontSize:12, padding:"7px 10px", outline:"none" }}>
+                {SORTS.map(s=><option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
+              <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{ background:C.vdark, border:`1px solid ${C.border}`, borderRadius:3, color:statusFilter?C.accent:C.dim, fontFamily:"monospace", fontSize:12, padding:"7px 10px", outline:"none" }}>
+                <option value="">All Statuses</option>
+                <option value="reading">📖 Reading</option>
+                <option value="finished">✅ Finished</option>
+                <option value="want_to_read">📚 Want to Read</option>
+                <option value="dnf">💀 DNF</option>
+              </select>
+            </div>
+          )}
 
           {/* Add form */}
           {showForm && (
@@ -660,7 +713,7 @@ export default function Library() {
           )}
 
           {/* Book grid */}
-          <div style={{ padding:"20px 24px" }} ref={gridRef}>
+          <div style={{ padding: isMobile ? "12px" : "20px 24px" }} ref={gridRef}>
             {loading ? (
               <div style={{ textAlign:"center", color:C.dimmer, fontStyle:"italic", padding:80 }}>Loading the library…</div>
             ) : filtered.length===0 ? (
@@ -670,7 +723,7 @@ export default function Library() {
                 {books.length===0 && <div style={{ fontStyle:"italic", color:C.dimmer, marginTop:8 }}>Add your first spicy read</div>}
               </div>
             ) : (
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))", gap:14, alignItems:"stretch" }}>
+              <div style={{ display:"grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(auto-fill,minmax(200px,1fr))", gap: isMobile ? 10 : 14, alignItems:"stretch" }}>
                 {filtered.map(book => (
                   <BookCard
                     key={book.id}
