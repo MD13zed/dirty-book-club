@@ -15,6 +15,49 @@ function useIsMobile() {
   return isMobile;
 }
 
+// ── Progress card — DNF ones are tap-to-reveal ────────────────────────────────
+function DnfCard({ p, C }) {
+  const [open, setOpen] = useState(false);
+  const isDnf = p.status === "dnf";
+
+  return (
+    <div
+      onClick={() => isDnf && p.dnf_reason && setOpen(o => !o)}
+      style={{
+        background: C.card,
+        border: `1px solid ${isDnf ? "#90404055" : C.border}`,
+        borderRadius: 6,
+        padding: "12px 16px",
+        cursor: isDnf && p.dnf_reason ? "pointer" : "default",
+        transition: "border-color 0.15s",
+      }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+        <div style={{ fontFamily:"'Playfair Display',serif", fontSize:14, color:C.text, flex:1, minWidth:0, marginRight:8 }}>{p.book_title}</div>
+        <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
+          <span style={{ fontFamily:"monospace", fontSize:11, color:STATUS_COLORS[p.status] }}>{STATUS_LABELS[p.status]}</span>
+          {isDnf && p.dnf_reason && (
+            <span style={{ fontFamily:"monospace", fontSize:10, color:"#c06060", opacity:0.7 }}>{open ? "▲" : "▼"}</span>
+          )}
+        </div>
+      </div>
+      {p.status === "reading" && p.total_pages && (
+        <>
+          <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, marginTop:4 }}>p.{p.current_page} of {p.total_pages}</div>
+          <ProgressBar current={p.current_page} total={p.total_pages} color={C.accent} />
+        </>
+      )}
+      {isDnf && p.dnf_reason && open && (
+        <div style={{ fontFamily:"'EB Garamond',serif", fontSize:14, color:"#c06060", fontStyle:"italic", marginTop:8, paddingTop:8, borderTop:"1px solid #90404033", lineHeight:1.5 }}>
+          💀 "{p.dnf_reason}"
+        </div>
+      )}
+      {isDnf && !p.dnf_reason && (
+        <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, marginTop:4 }}>No reason left</div>
+      )}
+    </div>
+  );
+}
+
 export default function Profile() {
   const { id }  = useParams();
   const { C, theme, updateTheme } = useTheme();
@@ -172,23 +215,7 @@ export default function Profile() {
           <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, letterSpacing:1, marginBottom:12 }}>READING PROGRESS</div>
           <div style={{ display:"grid", gap:8 }}>
             {member.progress.filter(p=>p.status!=="want_to_read").map(p => (
-              <div key={p.id} style={{ background:C.card, border:`1px solid ${p.status==="dnf"?"#90404055":C.border}`, borderRadius:6, padding:"12px 16px" }}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                  <div style={{ fontFamily:"'Playfair Display',serif", fontSize:14, color:C.text }}>{p.book_title}</div>
-                  <span style={{ fontFamily:"monospace", fontSize:11, color:STATUS_COLORS[p.status] }}>{STATUS_LABELS[p.status]}</span>
-                </div>
-                {p.status==="reading" && p.total_pages && (
-                  <>
-                    <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, marginTop:4 }}>p.{p.current_page} of {p.total_pages}</div>
-                    <ProgressBar current={p.current_page} total={p.total_pages} color={C.accent} />
-                  </>
-                )}
-                {p.status==="dnf" && p.dnf_reason && (
-                  <div style={{ fontFamily:"'EB Garamond',serif", fontSize:13, color:"#c06060", fontStyle:"italic", marginTop:6 }}>
-                    💀 "{p.dnf_reason}"
-                  </div>
-                )}
-              </div>
+              <DnfCard key={p.id} p={p} C={C} />
             ))}
           </div>
         </div>
