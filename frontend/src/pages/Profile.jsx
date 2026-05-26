@@ -1,14 +1,26 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useTheme, useAuth } from "../App";
 import { api } from "../api";
 import { StarRating, Avatar, ProgressBar, STATUS_LABELS, STATUS_COLORS } from "../components/ui";
 import { THEMES } from "../theme";
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
+  return isMobile;
+}
+
 export default function Profile() {
   const { id }  = useParams();
   const { C, theme, updateTheme } = useTheme();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const nav = useNavigate();
+  const isMobile = useIsMobile();
 
   const [member,      setMember]      = useState(null);
   const [loading,     setLoading]     = useState(true);
@@ -94,7 +106,23 @@ export default function Profile() {
                   </div>
                 ))}
               </div>
-              {isMe && <button onClick={()=>setEditing(true)} style={{ marginTop:12, background:"transparent", border:`1px solid ${C.border}`, borderRadius:3, color:C.dim, fontFamily:"monospace", fontSize:12, padding:"6px 12px", cursor:"pointer" }}>Edit profile</button>}
+              {isMe && (
+                <div style={{ marginTop:12, display:"flex", flexDirection:"column", alignItems:"center", gap:8 }}>
+                  <button onClick={()=>setEditing(true)} style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:3, color:C.dim, fontFamily:"monospace", fontSize:12, padding:"6px 12px", cursor:"pointer" }}>Edit profile</button>
+                  {isMobile && (
+                    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:8, marginTop:4 }}>
+                      <select value={theme} onChange={e => updateTheme(e.target.value)}
+                        style={{ background:C.vdark, border:`1px solid ${C.border}`, borderRadius:4, color:C.dim, fontFamily:"monospace", fontSize:11, padding:"5px 10px", cursor:"pointer", outline:"none" }}>
+                        {Object.entries(THEMES).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
+                      </select>
+                      <button onClick={() => { logout(); nav("/"); }}
+                        style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:3, color:C.dimmer, fontFamily:"monospace", fontSize:11, padding:"6px 16px", cursor:"pointer" }}>
+                        Sign out
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>

@@ -43,7 +43,6 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
   const [tab, setTab]             = useState("reviews");
   const [showTw, setShowTw]       = useState(false);
   const [dnfReason, setDnfReason] = useState("");
-  const [finishedAt, setFinishedAt] = useState("");
 
   const genres = book.genres || [];
   const tws    = book.trigger_warnings || [];
@@ -59,7 +58,7 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
     if (myReview) { setMyRating(myReview.rating); setMyNotes(myReview.notes||""); }
     api.getProgress(book.id).then(rows => {
       const mine = rows.find(r => r.member_id === user?.id);
-      if (mine) { setProgress(mine); setDnfReason(mine.dnf_reason||""); setFinishedAt(mine.finished_at ? String(mine.finished_at).slice(0,10) : ""); }
+      if (mine) { setProgress(mine); setDnfReason(mine.dnf_reason||""); }
     }).catch(() => {});
   }, []);
 
@@ -98,8 +97,8 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
   });
 
   return (
-    <div onClick={onClose} style={{ position:"fixed", inset:0, background:"#00000099", zIndex:100, display:"flex", alignItems:"center", justifyContent:"center", padding:16, overflowY:"auto" }}>
-      <div onClick={e=>e.stopPropagation()} style={{ background:`linear-gradient(160deg,${C.card},${C.card2})`, border:`1px solid ${C.border}`, borderLeft:`5px solid ${genres.length?genreColor(genres[0]):C.dim}`, borderRadius:6, maxWidth:560, width:"100%", boxShadow:"0 20px 60px #00000099", maxHeight:"90vh", overflowY:"auto" }}>
+    <div onClick={onClose} style={{ position:"fixed", inset:0, background:"#00000099", zIndex:100, display:"flex", alignItems:"flex-start", justifyContent:"center", padding:"12px 8px", overflowY:"auto" }}>
+      <div onClick={e=>e.stopPropagation()} style={{ background:`linear-gradient(160deg,${C.card},${C.card2})`, border:`1px solid ${C.border}`, borderLeft:`5px solid ${genres.length?genreColor(genres[0]):C.dim}`, borderRadius:6, maxWidth:560, width:"100%", boxShadow:"0 20px 60px #00000099", overflowY:"auto" }}>
 
         {book.cover_url && <img src={book.cover_url} alt={book.title} style={{ width:"100%", maxHeight:240, objectFit:"cover", objectPosition:"top" }} />}
 
@@ -242,21 +241,6 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
 
               {progress?.status==="reading" && progress?.total_pages && (
                 <ProgressBar current={progress.current_page} total={progress.total_pages} color={C.accent} />
-              )}
-
-              {progress?.status==="finished" && (
-                <div>
-                  <label style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, display:"block", marginBottom:4 }}>DATE FINISHED</label>
-                  <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-                    <input type="date" value={finishedAt}
-                      onChange={e => setFinishedAt(e.target.value)}
-                      style={{ ...INP(C), colorScheme:"dark", flex:1 }} />
-                    <button onClick={() => saveProgress({ status:"finished", finished_at: finishedAt || null })}
-                      style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:3, color:C.dim, fontFamily:"monospace", fontSize:12, padding:"5px 12px", cursor:"pointer", whiteSpace:"nowrap" }}>
-                      Save date
-                    </button>
-                  </div>
-                </div>
               )}
 
               {progress?.status==="dnf" && (
