@@ -229,8 +229,8 @@ function CsvImportModal({ C, onClose, onImported, existingBooks }) {
   };
 
   return (
-    <div onClick={onClose} style={{ position:"fixed", inset:0, background:"#00000099", zIndex:200, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
-      <div onClick={e=>e.stopPropagation()} style={{ background:C.bg2, border:`1px solid ${C.border}`, borderRadius:8, padding:28, width:"100%", maxWidth:620, maxHeight:"80vh", overflowY:"auto" }}>
+    <div onClick={onClose} style={{ position:"fixed", inset:0, background:"#00000099", zIndex:200, display:"flex", alignItems:"flex-start", justifyContent:"center", padding:"12px 8px", overflowY:"auto" }}>
+      <div onClick={e=>e.stopPropagation()} style={{ background:C.bg2, border:`1px solid ${C.border}`, borderRadius:8, padding:"20px 16px", width:"100%", maxWidth:620, overflowY:"auto" }}>
 
         {/* Header */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
