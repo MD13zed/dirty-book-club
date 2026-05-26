@@ -484,7 +484,7 @@ export default function Library() {
   const botmBooks = [...books].filter(b => b.botm_month).sort((a,b) => {
     const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
     const parse = (s) => { const [m,y] = s.split(" "); return parseInt(y)*12 + months.indexOf(m); };
-    return parse(b.botm_month) > parse(a.botm_month) ? -1 : 1;
+    return parse(b.botm_month) - parse(a.botm_month);
   });
 
   return (

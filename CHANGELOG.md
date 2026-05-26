@@ -4,6 +4,20 @@ All notable changes to The Spicy Shelf are documented here.
 
 ---
 
+## [3.4.0] — 2026-05-26
+
+### Added
+- **📖 Reading Now tab** — new tab in the library showing every member currently reading a book, with cover, progress bar, and percentage. Tapping any entry opens the book modal. Tab label shows the active reader count.
+- **🏆 BOTM History tab** — new tab available to all members listing every past Book of the Month sorted newest first, with gold left border, club average rating, review count, and page count per book. Previously only admins could see this in the admin dashboard.
+- **Genre colour strip label on mobile** — tapping a genre in the colour strip now shows a small coloured label below it with the active genre name and a ✕ clear button. Desktop still uses the hover tooltip.
+- **Weekly digest** — posts to `library-updates` every Sunday at 4pm UTC. Includes manually added books (CSV imports excluded), who's currently reading with progress bars, reviews left that week, current nominations, and the active BOTM. Falls back to a "quiet week 🌙" message if nothing happened.
+
+### Changed
+- **`/stats` expanded** — now shows total pages read across all members, top rated book (minimum 2 reviews), most reviewed book, and most active reader this month, in addition to the existing counts.
+- **Tab bar updated** — Library, Reading Now, Nominations, and BOTM History tabs. On mobile the labels shorten to icons and counts to save space.
+
+---
+
 ## [3.3.0] — 2026-05-24
 
 ### Added

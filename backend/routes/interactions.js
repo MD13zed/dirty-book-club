@@ -510,6 +510,16 @@ function handleGettingStarted(res) {
         inline: false,
       },
       {
+        name:  "📖 Reading Now tab",
+        value: "See what every club member is currently reading — with cover, progress bar and percentage. Tap any entry to open the book.",
+        inline: false,
+      },
+      {
+        name:  "🏆 BOTM History tab",
+        value: "Browse every past Book of the Month sorted newest first, with club average rating and review count for each.",
+        inline: false,
+      },
+      {
         name:  "📖 Reading progress",
         value: [
           "Set a status for any book — **Want to Read**, **Currently Reading**, **Finished**, or **Did Not Finish**.",

@@ -16,7 +16,7 @@ A private book club library for tracking, reviewing, and discussing reads togeth
 - **Trigger warnings** — optional tags shown as a collapsed toggle on book cards. Once you expand and dismiss them, the toggle stays hidden for that book — per member, persists across sessions
 - All book cards are uniform size — books without covers show a styled placeholder
 - Sort by recently added, recently read, highest rated, title, author, series
-- Filter by genre using the colour strip at the top
+- Filter by genre using the colour strip at the top — on mobile, tapping shows a label with the active genre and a clear button
 - Filter by reading status — All / Reading / Finished / Want to Read / DNF
 - Search by title, author, or series
 
@@ -33,6 +33,11 @@ A private book club library for tracking, reviewing, and discussing reads togeth
 - Click a reviewer's name in the book modal to go to their profile
 - Filter your reviews by star rating on your profile page
 
+### Reading Now
+- Dedicated tab showing every club member who is currently reading, with book cover, progress bar and percentage
+- Updates in real time — tap any entry to open the book modal
+- Tab label shows the active reader count at a glance
+
 ### Book Nominations & TBR Poll
 - Nominate any library book for the next Book of the Month — button inside each card
 - Previous BOTMs cannot be nominated again
@@ -45,7 +50,7 @@ A private book club library for tracking, reviewing, and discussing reads togeth
 - Admin picks a book and month, fires a Discord embed announcement
 - Thread automatically created in the book discussions channel
 - Gold BOTM banner on the book card with the month name
-- Full history of previous BOTMs in the admin dashboard sorted newest first
+- **BOTM History tab** — all members can browse every past BOTM sorted newest first, with club average rating, review count, and page count per book
 
 ### Member Profiles
 - Discord avatar and username synced automatically on login
@@ -71,7 +76,7 @@ A private book club library for tracking, reviewing, and discussing reads togeth
 |---|---|
 | `/shelf` | Shows the 5 most recently added books |
 | `/botm` | Shows the current Book of the Month |
-| `/stats` | Club statistics |
+| `/stats` | Club stats — books, reviews, members, avg rating, total pages read, top rated book, most reviewed book, most active reader this month |
 | `/search title:` | Search the library by title |
 | `/review title: rating: notes:` | Submit or update a review |
 | `/reading title: status: page:` | Update reading progress |
