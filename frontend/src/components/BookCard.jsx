@@ -135,11 +135,16 @@ export default function BookCard({ book, reviews = [], myProgress, currentUser, 
 
         {/* Member avatars */}
         {reviews.length > 0 && (
-          <div onClick={() => onClick(book)} style={{ display:"flex", gap:3, alignItems:"center", flexWrap:"wrap", cursor:"pointer" }}>
+          <div onClick={() => onClick(book)} style={{ display:"flex", gap:4, alignItems:"flex-end", flexWrap:"wrap", cursor:"pointer" }}>
             {reviews.slice(0,6).map(r => (
-              <div key={r.member_id} title={r.member_name}><Avatar name={r.member_name} src={r.member_avatar} size={18} /></div>
+              <div key={r.member_id} title={r.member_name} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2 }}>
+                <Avatar name={r.member_name} src={r.member_avatar} size={18} />
+                <span style={{ fontFamily:"monospace", fontSize:8, color:C.dimmer, maxWidth:30, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", textAlign:"center" }}>
+                  {(r.member_name||"").split(" ")[0]}
+                </span>
+              </div>
             ))}
-            {!myReview && <span style={{ fontFamily:"monospace", fontSize:9, color:C.dimmer }}>not reviewed</span>}
+            {!myReview && <span style={{ fontFamily:"monospace", fontSize:9, color:C.dimmer, alignSelf:"center" }}>not reviewed</span>}
           </div>
         )}
 

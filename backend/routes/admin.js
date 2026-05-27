@@ -13,6 +13,19 @@ router.get("/stats", async (req, res) => {
     const { rows: [{ total_reviews }] } = await pool.query("SELECT COUNT(*) AS total_reviews FROM reviews");
     const { rows: [{ total_members }] } = await pool.query("SELECT COUNT(*) AS total_members FROM members");
     const { rows: [{ avg_rating }] }    = await pool.query("SELECT ROUND(AVG(rating)::numeric,2) AS avg_rating FROM reviews WHERE rating>0");
+    const { rows: [{ total_pages }] }   = await pool.query(`
+      SELECT COALESCE(SUM(b.total_pages),0)::int AS total_pages
+      FROM reading_progress rp JOIN books b ON b.id = rp.book_id
+      WHERE rp.status = 'finished' AND b.total_pages IS NOT NULL
+    `);
+    const { rows: [top_rated] } = await pool.query(`
+      SELECT b.title, b.author, ROUND(AVG(r.rating)::numeric,1) AS avg, COUNT(*)::int AS cnt
+      FROM reviews r JOIN books b ON b.id = r.book_id
+      WHERE r.rating > 0
+      GROUP BY b.id, b.title, b.author
+      HAVING COUNT(*) >= 2
+      ORDER BY avg DESC, cnt DESC LIMIT 1
+    `);
 
     const { rows: top_books } = await pool.query(
       `SELECT b.title, b.author, ROUND(AVG(r.rating)::numeric,1) AS avg, COUNT(r.id) AS reviews
@@ -28,7 +41,7 @@ router.get("/stats", async (req, res) => {
        ORDER BY ts DESC LIMIT 10`
     );
 
-    res.json({ total_books, total_reviews, total_members, avg_rating, top_books, genre_counts, recent_activity });
+    res.json({ total_books, total_reviews, total_members, avg_rating, total_pages, top_rated: top_rated||null, top_books, genre_counts, recent_activity });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

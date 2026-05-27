@@ -434,9 +434,18 @@ export default function Library() {
     closeForm();
   };
 
+  const [toast, setToast] = useState(null);
+
+  const showToast = (msg, color = C.accent) => {
+    setToast({ msg, color });
+    setTimeout(() => setToast(null), 3000);
+  };
+
   const nominate = async (bookId) => {
     const updated = await api.nominate(bookId);
     setNoms(updated);
+    const book = books.find(b => b.id === bookId);
+    showToast(`📚 "${book?.title}" nominated!`);
   };
 
   const vote = async (nomId, iVoted) => {
@@ -881,6 +890,13 @@ export default function Library() {
           onImported={handleCsvImported}
           existingBooks={books}
         />
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div style={{ position:"fixed", bottom:24, left:"50%", transform:"translateX(-50%)", background:C.card, border:`1px solid ${toast.color}55`, borderRadius:8, padding:"10px 20px", fontFamily:"'EB Garamond',serif", fontSize:15, color:toast.color, boxShadow:"0 4px 20px #00000066", zIndex:300, whiteSpace:"nowrap", animation:"fadein 0.2s ease" }}>
+          {toast.msg}
+        </div>
       )}
     </div>
   );

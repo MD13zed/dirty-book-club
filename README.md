@@ -76,8 +76,7 @@ A private book club library for tracking, reviewing, and discussing reads togeth
 |---|---|
 | `/shelf` | Shows the 5 most recently added books |
 | `/botm` | Shows the current Book of the Month |
-| `/stats` | Club stats — books, reviews, members, avg rating, total pages read, top rated book, most reviewed book, most active reader this month |
-| `/search title:` | Search the library by title |
+| `/stats` | Club stats — books, reviews, members, avg rating, total pages read, top rated book, most reviewed book, most active reader this month || `/search title:` | Search the library by title |
 | `/review title: rating: notes:` | Submit or update a review |
 | `/reading title: status: page:` | Update reading progress |
 | `/myshelf` | See your full reading list, filterable by status |

@@ -102,6 +102,10 @@ export default function Admin() {
             <Stat label="Total Reviews" value={stats.total_reviews} color={C.accent2} />
             <Stat label="Members"       value={stats.total_members} color="#60a080" />
             <Stat label="Avg Rating"    value={stats.avg_rating?`${stats.avg_rating}★`:"—"} color="#c07040" />
+            <Stat label="Pages Read"    value={stats.total_pages?.toLocaleString()||"—"} color="#9060d0" />
+            {stats.top_rated && (
+              <Stat label="Top Rated" value={`${stats.top_rated.avg}★ — ${stats.top_rated.title}`} color="#ffd700" />
+            )}
           </div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
             <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:6, padding:"18px 20px" }}>

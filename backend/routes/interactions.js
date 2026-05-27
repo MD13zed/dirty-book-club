@@ -562,7 +562,7 @@ function handleGettingStarted(res) {
           "`/leaderboard` — who has read the most and reviewed the most",
           "`/members` — everyone in the club with their stats",
           "`/members user:@someone` — a specific member's profile and reading list",
-          "`/stats` — club-wide reading statistics",
+          "`/stats` — club-wide reading statistics — books, reviews, pages read, top rated book, most active reader",
         ].join("\n"),
         inline: false,
       },
