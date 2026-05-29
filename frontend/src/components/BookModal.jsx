@@ -60,7 +60,7 @@ function DnfMembersSection({ dnfRows, C, onClose, navigate }) {
   );
 }
 
-export default function BookModal({ book: initialBook, allReviews, onClose, onBookUpdated, onBookDeleted }) {
+export default function BookModal({ book: initialBook, allReviews, onClose, onBookUpdated, onBookDeleted, onReviewSaved, onProgressSaved }) {
   const { C }    = useTheme();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -112,6 +112,11 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
     await api.saveReview({ book_id:book.id, rating:myRating, notes:myNotes });
     const fresh = await api.getReviews(book.id);
     setReviews(fresh);
+    onReviewSaved?.(book.id, fresh);
+    // Refresh book to get updated avg_rating / review_count
+    const updatedBook = await api.getBook(book.id);
+    setBook(updatedBook);
+    onBookUpdated?.(updatedBook);
     setSaved(true); setTimeout(() => setSaved(false), 1500);
   };
 
@@ -119,6 +124,7 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
     const p = { book_id:book.id, ...(progress||{}), ...updates };
     const saved = await api.saveProgress(p);
     setProgress(saved);
+    onProgressSaved?.(saved);
   };
 
   const saveEdit = async () => {
