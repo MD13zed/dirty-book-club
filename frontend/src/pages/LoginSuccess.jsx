@@ -8,10 +8,12 @@ export default function LoginSuccess() {
   const { login } = useAuth();
 
   useEffect(() => {
-    // Token is in URL hash: /login-success#token=xxx
-    const hash  = window.location.hash.slice(1);
-    const params = new URLSearchParams(hash);
+    // Token is in URL query param: /login-success?token=xxx
+    const params = new URLSearchParams(window.location.search);
     const token = params.get("token");
+
+    // Clear the token from the URL immediately
+    window.history.replaceState(null, "", window.location.pathname);
 
     if (!token) { navigate("/"); return; }
 

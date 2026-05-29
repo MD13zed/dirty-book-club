@@ -60,12 +60,12 @@ router.get("/discord/callback", async (req, res) => {
     const member = rows[0];
 
     const token = jwt.sign(
-      { id: member.id, discordId, username: displayName, isAdmin: member.is_admin },
+      { id: member.id, discordId, username: displayName, is_admin: member.is_admin },
       process.env.JWT_SECRET,
       { expiresIn: "30d" }
     );
 
-    res.redirect(`${process.env.FRONTEND_URL}/login-success#token=${token}`);
+    res.redirect(`${process.env.FRONTEND_URL}/login-success?token=${token}`);
   } catch (err) {
     console.error("Discord OAuth error:", err.response?.data || err.message);
     res.redirect(`${process.env.FRONTEND_URL}?error=oauth_failed`);

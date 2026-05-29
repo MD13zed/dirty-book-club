@@ -25,6 +25,9 @@ CREATE TABLE IF NOT EXISTS books (
   series     VARCHAR(300) DEFAULT '',
   cover_url  VARCHAR(500) DEFAULT '',
   date_read  DATE,
+  total_pages INT         DEFAULT NULL,
+  source     VARCHAR(50)  DEFAULT 'manual',
+  botm_month VARCHAR(20)  DEFAULT NULL,
   added_by   UUID         REFERENCES members(id) ON DELETE SET NULL,
   added_at   TIMESTAMPTZ  DEFAULT CURRENT_TIMESTAMP
 );
@@ -58,12 +61,16 @@ CREATE TABLE IF NOT EXISTS reading_progress (
   current_page INT         DEFAULT 0,
   started_at   DATE        DEFAULT NULL,
   finished_at  DATE        DEFAULT NULL,
+  dnf_reason   TEXT        DEFAULT NULL,
   updated_at   TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   UNIQUE (book_id, member_id)
 );
 
 -- Indexes
-CREATE INDEX IF NOT EXISTS idx_books_added_at  ON books(added_at DESC);
-CREATE INDEX IF NOT EXISTS idx_books_date_read ON books(date_read DESC);
-CREATE INDEX IF NOT EXISTS idx_reviews_book    ON reviews(book_id);
-CREATE INDEX IF NOT EXISTS idx_progress_member ON reading_progress(member_id);
+CREATE INDEX IF NOT EXISTS idx_books_added_at    ON books(added_at DESC);
+CREATE INDEX IF NOT EXISTS idx_books_date_read   ON books(date_read DESC);
+CREATE INDEX IF NOT EXISTS idx_reviews_book      ON reviews(book_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_member    ON reviews(member_id);
+CREATE INDEX IF NOT EXISTS idx_progress_member   ON reading_progress(member_id);
+CREATE INDEX IF NOT EXISTS idx_progress_book     ON reading_progress(book_id);
+CREATE INDEX IF NOT EXISTS idx_book_genres_book  ON book_genres(book_id);

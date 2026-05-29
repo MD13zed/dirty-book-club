@@ -1,4 +1,3 @@
-require("dotenv").config();
 const express = require("express");
 const router  = express.Router();
 const pool    = require("../db/pool");
@@ -49,10 +48,12 @@ async function postDigest() {
 
   // ── Nominations ────────────────────────────────────────────────────────────
   const { rows: noms } = await pool.query(`
-    SELECT b.title, n.vote_count
+    SELECT b.title, COUNT(v.member_id)::int AS vote_count
     FROM nominations n
     JOIN books b ON b.id = n.book_id
-    ORDER BY n.vote_count DESC
+    LEFT JOIN nomination_votes v ON v.nomination_id = n.id
+    GROUP BY n.id, b.title
+    ORDER BY vote_count DESC
     LIMIT 5
   `);
 

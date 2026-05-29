@@ -85,11 +85,19 @@ router.post("/", auth, async (req, res) => {
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
       [id, title.trim(), author||"", series||"", cover_url||"", date_read||null, req.user.id, total_pages||null, source]
     );
-    for (const g of genres.slice(0,5)) {
-      await pool.query("INSERT INTO book_genres (book_id,genre) VALUES ($1,$2) ON CONFLICT DO NOTHING", [id,g]);
+    if (genres.slice(0, 5).length > 0) {
+      const genreVals = genres.slice(0, 5).map((g, i) => `($1,$${i + 2})`).join(",");
+      await pool.query(
+        `INSERT INTO book_genres (book_id,genre) VALUES ${genreVals} ON CONFLICT DO NOTHING`,
+        [id, ...genres.slice(0, 5)]
+      );
     }
-    for (const t of trigger_warnings) {
-      await pool.query("INSERT INTO book_tw (book_id,tag) VALUES ($1,$2) ON CONFLICT DO NOTHING", [id,t]);
+    if (trigger_warnings.length > 0) {
+      const twVals = trigger_warnings.map((t, i) => `($1,$${i + 2})`).join(",");
+      await pool.query(
+        `INSERT INTO book_tw (book_id,tag) VALUES ${twVals} ON CONFLICT DO NOTHING`,
+        [id, ...trigger_warnings]
+      );
     }
     const { rows: [book] } = await pool.query("SELECT * FROM books WHERE id=$1", [id]);
 

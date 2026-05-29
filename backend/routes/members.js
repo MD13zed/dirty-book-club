@@ -6,13 +6,15 @@ const VALID_THEMES = ["dark-purple","midnight","rose-gold","forest","ocean","blo
 
 // GET /api/members
 router.get("/", async (req, res) => {
-  const { rows } = await pool.query(
-    `SELECT m.id, m.display_name, m.avatar_url, m.bio, m.is_admin, m.theme, m.joined_at,
-            (SELECT COUNT(*) FROM reviews   WHERE member_id = m.id) AS review_count,
-            (SELECT COUNT(*) FROM reading_progress WHERE member_id = m.id AND status='finished') AS books_finished
-     FROM members m ORDER BY m.joined_at ASC`
-  );
-  res.json(rows);
+  try {
+    const { rows } = await pool.query(
+      `SELECT m.id, m.display_name, m.avatar_url, m.bio, m.is_admin, m.theme, m.joined_at,
+              (SELECT COUNT(*) FROM reviews   WHERE member_id = m.id) AS review_count,
+              (SELECT COUNT(*) FROM reading_progress WHERE member_id = m.id AND status='finished') AS books_finished
+       FROM members m ORDER BY m.joined_at ASC`
+    );
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // GET /api/members/:id

@@ -23,9 +23,20 @@ async function req(method, path, body) {
   return data;
 }
 
+async function reqAuth(method, path) {
+  const res = await fetch(BASE_URL + path, {
+    method,
+    headers: headers(),
+  });
+  if (res.status === 401) { localStorage.removeItem("dbc_token"); window.location.href = "/"; return; }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+}
+
 export const api = {
   // Auth
-  getMe: () => fetch(`${BASE_URL}/auth/me`, { headers: headers() }).then(r => r.json()),
+  getMe: () => reqAuth("GET", "/auth/me"),
 
   // Books
   getBooks:   ()          => req("GET",    "/books"),

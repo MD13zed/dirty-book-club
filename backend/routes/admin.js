@@ -66,15 +66,19 @@ router.patch("/members/:id/admin", async (req, res) => {
 
 // DELETE /api/admin/members/:id
 router.delete("/members/:id", async (req, res) => {
-  if (req.params.id === req.user.id) return res.status(400).json({ error: "Cannot delete yourself" });
-  await pool.query("DELETE FROM members WHERE id=$1", [req.params.id]);
-  res.json({ deleted: true });
+  try {
+    if (req.params.id === req.user.id) return res.status(400).json({ error: "Cannot delete yourself" });
+    await pool.query("DELETE FROM members WHERE id=$1", [req.params.id]);
+    res.json({ deleted: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // DELETE /api/admin/books/:id
 router.delete("/books/:id", async (req, res) => {
-  await pool.query("DELETE FROM books WHERE id=$1", [req.params.id]);
-  res.json({ deleted: true });
+  try {
+    await pool.query("DELETE FROM books WHERE id=$1", [req.params.id]);
+    res.json({ deleted: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // POST /api/admin/botm
@@ -86,8 +90,18 @@ router.post("/botm", async (req, res) => {
     const { rows: [book] } = await pool.query("SELECT * FROM books WHERE id=$1", [book_id]);
     if (!book) return res.status(404).json({ error: "Book not found" });
 
-    await pool.query("UPDATE books SET botm_month=NULL");
-    await pool.query("UPDATE books SET botm_month=$1 WHERE id=$2", [month, book_id]);
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("UPDATE books SET botm_month=NULL");
+      await client.query("UPDATE books SET botm_month=$1 WHERE id=$2", [month, book_id]);
+      await client.query("COMMIT");
+    } catch (e) {
+      await client.query("ROLLBACK");
+      throw e;
+    } finally {
+      client.release();
+    }
 
     const { rows: genreRows } = await pool.query("SELECT genre FROM book_genres WHERE book_id=$1", [book_id]);
     const genres = genreRows.map(g => g.genre);
