@@ -88,6 +88,7 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
   const [tab, setTab]             = useState("reviews");
   const [showTw, setShowTw]       = useState(false);
   const [dnfReason, setDnfReason] = useState("");
+  const [finishedAt, setFinishedAt] = useState("");
 
   const genres = book.genres || [];
   const tws    = book.trigger_warnings || [];
@@ -104,7 +105,7 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
     api.getProgress(book.id).then(rows => {
       setAllProgress(rows);
       const mine = rows.find(r => r.member_id === user?.id);
-      if (mine) { setProgress(mine); setDnfReason(mine.dnf_reason||""); }
+      if (mine) { setProgress(mine); setDnfReason(mine.dnf_reason||""); setFinishedAt(mine.finished_at ? String(mine.finished_at).slice(0,10) : ""); }
     }).catch(() => {});
   }, []);
 
@@ -304,8 +305,16 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
                 <ProgressBar current={progress.current_page} total={progress.total_pages} color={C.accent} />
               )}
 
-              {progress?.status==="dnf" && (
+              {progress?.status==="finished" && (
                 <div>
+                  <label style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, display:"block", marginBottom:4 }}>DATE FINISHED</label>
+                  <input type="date" value={finishedAt}
+                    onChange={e => { setFinishedAt(e.target.value); saveProgress({ finished_at: e.target.value || null }); }}
+                    style={INP(C)} />
+                </div>
+              )}
+
+              {progress?.status==="dnf" && (                <div>
                   <label style={{ fontFamily:"monospace", fontSize:11, color:"#904040", display:"block", marginBottom:4 }}>WHY DID YOU DNF?</label>
                   <textarea value={dnfReason} onChange={e=>setDnfReason(e.target.value)} placeholder="Optional — what made you stop?" rows={2}
                     style={{ width:"100%", background:C.bg, border:"1px solid #90404055", borderRadius:3, color:C.text, fontFamily:"'EB Garamond',serif", fontSize:14, padding:"7px 11px", outline:"none", resize:"vertical", boxSizing:"border-box" }} />
