@@ -19,6 +19,7 @@ app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", rateLimit({ windowMs: 15*60*1000, max: 300, standardHeaders: true, legacyHeaders: false }));
+app.use("/auth", rateLimit({ windowMs: 15*60*1000, max: 20, standardHeaders: true, legacyHeaders: false }));
 
 app.use("/auth",              require("./routes/auth"));
 app.use("/api/books",         require("./routes/books"));
