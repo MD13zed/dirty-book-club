@@ -131,6 +131,8 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
     setBook(updatedBook);
     onBookUpdated?.(updatedBook);
   };
+
+  const saveProgress = async (updates) => {
     const p = { book_id:book.id, ...(progress||{}), ...updates };
     const saved = await api.saveProgress(p);
     setProgress(saved);
