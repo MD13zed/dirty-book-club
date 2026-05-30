@@ -73,6 +73,7 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
   const [myNotes,  setMyNotes]    = useState("");
   const [saved,    setSaved]      = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
+  const [confirmDelReview, setConfirmDelReview] = useState(false);
   const [editing,  setEditing]    = useState(false);
   const [editForm, setEditForm]   = useState({
     title:            book.title,
@@ -245,9 +246,15 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
                     {saved?"✓ Saved":"Save Review"}
                   </button>
                   {reviews.find(r => r.member_id === user?.id) && (
-                    <button onClick={deleteReview} style={{ background:"transparent", border:"1px solid #904040", borderRadius:3, color:"#c06060", fontFamily:"monospace", fontSize:12, padding:"7px 14px", cursor:"pointer" }}>
-                      Delete
-                    </button>
+                    confirmDelReview
+                      ? <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+                          <span style={{ fontFamily:"monospace", fontSize:12, color:"#c05070" }}>Delete?</span>
+                          <button onClick={() => { deleteReview(); setConfirmDelReview(false); }} style={{ background:"#5a1a30", border:"1px solid #a33", borderRadius:3, color:"#ffaacc", fontFamily:"monospace", fontSize:12, padding:"5px 10px", cursor:"pointer" }}>Yes</button>
+                          <button onClick={() => setConfirmDelReview(false)} style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:3, color:C.dim, fontFamily:"monospace", fontSize:12, padding:"5px 10px", cursor:"pointer" }}>No</button>
+                        </div>
+                      : <button onClick={() => setConfirmDelReview(true)} style={{ background:"transparent", border:"1px solid #904040", borderRadius:3, color:"#c06060", fontFamily:"monospace", fontSize:12, padding:"7px 14px", cursor:"pointer" }}>
+                          Delete
+                        </button>
                   )}
                 </div>
               </div>
@@ -296,7 +303,11 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
                 <label style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, display:"block", marginBottom:6 }}>STATUS</label>
                 <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
                   {Object.entries(STATUS_LABELS).map(([k,v]) => (
-                    <button key={k} onClick={()=>saveProgress({status:k})}
+                    <button key={k} onClick={() => {
+                      const updates = { status: k };
+                      if (k !== "finished") { updates.finished_at = null; setFinishedAt(""); }
+                      saveProgress(updates);
+                    }}
                       style={{ background:progress?.status===k?STATUS_COLORS[k]+"44":"transparent", border:`1px solid ${progress?.status===k?STATUS_COLORS[k]:C.border}`, borderRadius:20, color:progress?.status===k?STATUS_COLORS[k]:C.dim, fontFamily:"monospace", fontSize:11, padding:"4px 12px", cursor:"pointer" }}>
                       {v}
                     </button>

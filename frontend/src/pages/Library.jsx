@@ -448,14 +448,19 @@ export default function Library() {
     showToast(`📚 "${book?.title}" nominated!`);
   };
 
+  const [confirmRemoveNom, setConfirmRemoveNom] = useState(null);
+
   const vote = async (nomId, iVoted) => {
     const updated = iVoted ? await api.unvoteNomination(nomId) : await api.voteNomination(nomId);
     setNoms(updated);
+    showToast(iVoted ? "Vote removed" : "👍 Vote cast!", iVoted ? C.dimmer : C.accent);
   };
 
   const removeNom = async (nomId) => {
     const updated = await api.deleteNomination(nomId);
     setNoms(updated);
+    setConfirmRemoveNom(null);
+    showToast("Nomination removed", C.dimmer);
   };
 
   const handleCsvImported = (addedBooks) => {
@@ -559,7 +564,12 @@ export default function Library() {
                     ▲ {n.vote_count}
                   </button>
                   {(n.i_nominated||user?.is_admin) && (
-                    <button onClick={()=>removeNom(n.id)} style={{ background:"transparent", border:"none", color:C.dimmer, fontFamily:"monospace", fontSize:11, cursor:"pointer" }}>remove</button>
+                    confirmRemoveNom === n.id
+                      ? <div style={{ display:"flex", gap:4, alignItems:"center" }}>
+                          <button onClick={() => removeNom(n.id)} style={{ background:"#5a1a30", border:"1px solid #a33", borderRadius:3, color:"#ffaacc", fontFamily:"monospace", fontSize:11, padding:"3px 8px", cursor:"pointer" }}>Yes</button>
+                          <button onClick={() => setConfirmRemoveNom(null)} style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:3, color:C.dim, fontFamily:"monospace", fontSize:11, padding:"3px 8px", cursor:"pointer" }}>No</button>
+                        </div>
+                      : <button onClick={() => setConfirmRemoveNom(n.id)} style={{ background:"transparent", border:"none", color:C.dimmer, fontFamily:"monospace", fontSize:11, cursor:"pointer" }}>remove</button>
                   )}
                 </div>
               </div>
