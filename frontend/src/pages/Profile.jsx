@@ -73,10 +73,16 @@ export default function Profile() {
 
   const isMe = user?.id === id;
 
-  useEffect(() => {
+  const loadMember = () => {
     api.getMember(id)
       .then(m => { setMember(m); setForm({ display_name:m.display_name||"", bio:m.bio||"", theme:m.theme||"dark-purple" }); })
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadMember();
+    window.addEventListener("focus", loadMember);
+    return () => window.removeEventListener("focus", loadMember);
   }, [id]);
 
   const save = async () => {
