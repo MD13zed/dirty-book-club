@@ -76,8 +76,8 @@ export default function Admin() {
   });
 
   const Stat = ({ label, value, color }) => (
-    <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:6, padding:"20px 24px", textAlign:"center" }}>
-      <div style={{ fontFamily:"'Playfair Display',serif", fontSize:36, fontWeight:900, color:color||C.accent }}>{value ?? "—"}</div>
+    <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:6, padding:"20px 24px", textAlign:"center", overflow:"hidden" }}>
+      <div style={{ fontFamily:"'Playfair Display',serif", fontSize: String(value).length > 10 ? 18 : 36, fontWeight:900, color:color||C.accent, wordBreak:"break-word" }}>{value ?? "—"}</div>
       <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, marginTop:4 }}>{label}</div>
     </div>
   );
@@ -104,7 +104,7 @@ export default function Admin() {
             <Stat label="Avg Rating"    value={stats.avg_rating?`${stats.avg_rating}★`:"—"} color="#c07040" />
             <Stat label="Pages Read"    value={stats.total_pages?.toLocaleString()||"—"} color="#9060d0" />
             {stats.top_rated && (
-              <Stat label="Top Rated" value={`${stats.top_rated.avg}★ — ${stats.top_rated.title}`} color="#ffd700" />
+              <Stat label="Top Rated" value={`${stats.top_rated.avg}★ — ${stats.top_rated.title.length > 20 ? stats.top_rated.title.slice(0, 20) + "…" : stats.top_rated.title}`} color="#ffd700" />
             )}
           </div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
