@@ -31,6 +31,7 @@ app.use("/api/uploads",       require("./routes/uploads"));
 app.use("/api/nominations",   require("./routes/nominations"));
 app.use("/api/reading-now",   require("./routes/reading-now"));
 app.use("/api/digest",        require("./routes/digest"));
+app.use("/api/yearend",       require("./routes/yearend"));
 
 app.get("/health", (req, res) => res.json({ ok: true, ts: new Date() }));
 app.use((req, res) => res.status(404).json({ error: "Not found" }));

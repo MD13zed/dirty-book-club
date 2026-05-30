@@ -72,7 +72,7 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
   const [myRating, setMyRating]   = useState(0);
   const [myNotes,  setMyNotes]    = useState("");
   const [saved,    setSaved]      = useState(false);
-  const [confirmDel, setConfirmDel] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [confirmDelReview, setConfirmDelReview] = useState(false);
   const [editing,  setEditing]    = useState(false);
   const [editForm, setEditForm]   = useState({
@@ -111,26 +111,31 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
   }, []);
 
   const saveReview = async () => {
-    await api.saveReview({ book_id:book.id, rating:myRating, notes:myNotes });
-    const fresh = await api.getReviews(book.id);
-    setReviews(fresh);
-    onReviewSaved?.(book.id, fresh);
-    // Refresh book to get updated avg_rating / review_count
-    const updatedBook = await api.getBook(book.id);
-    setBook(updatedBook);
-    onBookUpdated?.(updatedBook);
-    setSaved(true); setTimeout(() => setSaved(false), 1500);
+    setSaving(true);
+    try {
+      await api.saveReview({ book_id:book.id, rating:myRating, notes:myNotes });
+      const fresh = await api.getReviews(book.id);
+      setReviews(fresh);
+      onReviewSaved?.(book.id, fresh);
+      const updatedBook = await api.getBook(book.id);
+      setBook(updatedBook);
+      onBookUpdated?.(updatedBook);
+      setSaved(true); setTimeout(() => setSaved(false), 1500);
+    } finally { setSaving(false); }
   };
 
   const deleteReview = async () => {
-    await api.deleteReview(book.id);
-    setMyRating(0); setMyNotes("");
-    const fresh = await api.getReviews(book.id);
-    setReviews(fresh);
-    onReviewSaved?.(book.id, fresh);
-    const updatedBook = await api.getBook(book.id);
-    setBook(updatedBook);
-    onBookUpdated?.(updatedBook);
+    setSaving(true);
+    try {
+      await api.deleteReview(book.id);
+      setMyRating(0); setMyNotes("");
+      const fresh = await api.getReviews(book.id);
+      setReviews(fresh);
+      onReviewSaved?.(book.id, fresh);
+      const updatedBook = await api.getBook(book.id);
+      setBook(updatedBook);
+      onBookUpdated?.(updatedBook);
+    } finally { setSaving(false); }
   };
 
   const saveProgress = async (updates) => {
@@ -242,8 +247,8 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
                 <textarea value={myNotes} onChange={e=>setMyNotes(e.target.value)} placeholder="Your thoughts…" rows={3}
                   style={{ width:"100%", marginTop:10, background:C.bg, border:`1px solid ${C.border}`, borderRadius:3, color:C.text, fontFamily:"'EB Garamond',serif", fontSize:15, padding:"8px 12px", outline:"none", resize:"vertical", boxSizing:"border-box" }} />
                 <div style={{ display:"flex", gap:8, marginTop:10 }}>
-                  <button onClick={saveReview} style={{ background:saved?`#1a3a2a`:`linear-gradient(135deg,${C.accent},${C.accent2})`, border:"none", borderRadius:3, color:saved?"#7aff7a":C.bg, fontFamily:"'Playfair Display',serif", fontSize:13, fontWeight:700, padding:"7px 18px", cursor:"pointer", transition:"background 0.3s" }}>
-                    {saved?"✓ Saved":"Save Review"}
+                  <button onClick={saveReview} disabled={saving} style={{ background:saved?`#1a3a2a`:`linear-gradient(135deg,${C.accent},${C.accent2})`, border:"none", borderRadius:3, color:saved?"#7aff7a":C.bg, fontFamily:"'Playfair Display',serif", fontSize:13, fontWeight:700, padding:"7px 18px", cursor:saving?"not-allowed":"pointer", opacity:saving?0.7:1, transition:"background 0.3s" }}>
+                    {saving?"Saving…":saved?"✓ Saved":"Save Review"}
                   </button>
                   {reviews.find(r => r.member_id === user?.id) && (
                     confirmDelReview

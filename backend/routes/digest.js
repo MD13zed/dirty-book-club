@@ -154,6 +154,7 @@ async function postDigest() {
     method:  "POST",
     headers: { "Content-Type":"application/json" },
     body:    JSON.stringify({
+      content:    "<@&1445035924227493928>",
       username:   "Spicy Shelf",
       embeds,
     }),

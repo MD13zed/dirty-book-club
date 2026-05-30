@@ -2,6 +2,7 @@ import { useState, useEffect, createContext, useContext } from "react";
 import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { api }       from "./api";
 import { getTheme }  from "./theme";
+import ErrorBoundary  from "./components/ErrorBoundary";
 import Navbar        from "./components/Navbar";
 import Login         from "./pages/Login";
 import Library       from "./pages/Library";
@@ -62,13 +63,15 @@ export default function App() {
       <ThemeCtx.Provider value={{ C, theme, updateTheme }}>
         <div style={{ minHeight:"100vh", background:C.bg, color:C.text, fontFamily:"'EB Garamond',serif" }}>
           {user && <Navbar />}
-          <Routes>
-            <Route path="/"              element={user ? <Library /> : <Login />} />
-            <Route path="/login-success" element={<LoginSuccess />} />
-            <Route path="/profile/:id"   element={user ? <Profile /> : <Navigate to="/" />} />
-            <Route path="/admin"         element={user?.is_admin ? <Admin /> : <Navigate to="/" />} />
-            <Route path="*"              element={<Navigate to="/" />} />
-          </Routes>
+          <ErrorBoundary>
+            <Routes>
+              <Route path="/"              element={user ? <Library /> : <Login />} />
+              <Route path="/login-success" element={<LoginSuccess />} />
+              <Route path="/profile/:id"   element={user ? <Profile /> : <Navigate to="/" />} />
+              <Route path="/admin"         element={user?.is_admin ? <Admin /> : <Navigate to="/" />} />
+              <Route path="*"              element={<Navigate to="/" />} />
+            </Routes>
+          </ErrorBoundary>
         </div>
       </ThemeCtx.Provider>
     </AuthCtx.Provider>
