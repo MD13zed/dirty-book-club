@@ -61,7 +61,7 @@ async function postDigest() {
   const { rows: [botm] } = await pool.query(`
     SELECT title, author, botm_month FROM books
     WHERE botm_month IS NOT NULL
-    ORDER BY added_at DESC LIMIT 1
+    ORDER BY TO_DATE(botm_month, 'Month YYYY') DESC LIMIT 1
   `);
 
   // ── Build embeds ──────────────────────────────────────────────────────────

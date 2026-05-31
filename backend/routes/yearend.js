@@ -174,13 +174,32 @@ async function postYearEnd() {
   });
 
   // ── Post to Discord ───────────────────────────────────────────────────────
-  const res = await fetch(WEBHOOK, {
-    method:  "POST",
-    headers: { "Content-Type": "application/json" },
-    body:    JSON.stringify({ content: "<@&1445035924227493928>", username: "Spicy Shelf", embeds }),
-  });
+  // Split into chunks under Discord's 6000 char / 10 embed limits
+  const chunks = [];
+  let current = [], currentSize = 0;
+  for (const embed of embeds) {
+    const size = JSON.stringify(embed).length;
+    if (current.length > 0 && (currentSize + size > 5500 || current.length >= 10)) {
+      chunks.push(current);
+      current = []; currentSize = 0;
+    }
+    current.push(embed);
+    currentSize += size;
+  }
+  if (current.length) chunks.push(current);
 
-  if (!res.ok) throw new Error(`Webhook failed: ${res.status} ${await res.text()}`);
+  for (let i = 0; i < chunks.length; i++) {
+    const payload = { username: "Spicy Shelf", embeds: chunks[i] };
+    if (i === 0) payload.content = "<@&1445035924227493928>";
+    const r = await fetch(WEBHOOK, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify(payload),
+    });
+    if (!r.ok) throw new Error(`Webhook failed: ${r.status} ${await r.text()}`);
+    if (i < chunks.length - 1) await new Promise(res => setTimeout(res, 1000));
+  }
+
   return { ok: true, year, sections: embeds.length };
 }
 
