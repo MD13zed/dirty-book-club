@@ -68,11 +68,13 @@ router.post("/", auth, async (req, res) => {
 
 // DELETE /api/reviews/:bookId — delete own review
 router.delete("/:bookId", auth, async (req, res) => {
-  await pool.query(
-    "DELETE FROM reviews WHERE book_id = $1 AND member_id = $2",
-    [req.params.bookId, req.user.id]
-  );
-  res.json({ deleted: true });
+  try {
+    await pool.query(
+      "DELETE FROM reviews WHERE book_id = $1 AND member_id = $2",
+      [req.params.bookId, req.user.id]
+    );
+    res.json({ deleted: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 module.exports = router;

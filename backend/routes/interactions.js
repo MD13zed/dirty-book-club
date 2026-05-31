@@ -240,12 +240,19 @@ async function handleReading(res, options, discordId) {
   if (!memberId) return res.json(err(`You need to log in first: ${SITE_URL}`));
   const book = await findBook(titleQuery);
   if (!book) return res.json(err(`No book found matching **"${titleQuery}"**\nTry \`/search\` to find the exact title.`));
+  const today = new Date().toISOString().slice(0, 10);
   await pool.query(
-    `INSERT INTO reading_progress (id, book_id, member_id, status, current_page)
-     VALUES ($1,$2,$3,$4,$5)
+    `INSERT INTO reading_progress (id, book_id, member_id, status, current_page, started_at, finished_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7)
      ON CONFLICT (book_id, member_id) DO UPDATE SET
-       status=EXCLUDED.status, current_page=EXCLUDED.current_page, updated_at=CURRENT_TIMESTAMP`,
-    [uuidv4(), book.id, memberId, status, page]
+       status=EXCLUDED.status,
+       current_page=EXCLUDED.current_page,
+       started_at=CASE WHEN EXCLUDED.status='reading' AND reading_progress.started_at IS NULL THEN $6 ELSE reading_progress.started_at END,
+       finished_at=CASE WHEN EXCLUDED.status='finished' THEN $7 WHEN EXCLUDED.status != 'finished' THEN NULL ELSE reading_progress.finished_at END,
+       updated_at=CURRENT_TIMESTAMP`,
+    [uuidv4(), book.id, memberId, status, page,
+     status === "reading" ? today : null,
+     status === "finished" ? today : null]
   );
   const labels = { want_to_read:"📚 Want to read", reading:"📖 Currently reading", finished:"✅ Finished", dnf:"💀 Did not finish" };
   return res.json(reply([embed(

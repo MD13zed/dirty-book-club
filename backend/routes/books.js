@@ -126,14 +126,16 @@ router.patch("/:id", auth, async (req, res) => {
     );
     if (Array.isArray(genres)) {
       await pool.query("DELETE FROM book_genres WHERE book_id=$1", [req.params.id]);
-      for (const g of genres.slice(0,5)) {
-        await pool.query("INSERT INTO book_genres (book_id,genre) VALUES ($1,$2) ON CONFLICT DO NOTHING", [req.params.id,g]);
+      if (genres.slice(0,5).length > 0) {
+        const genreVals = genres.slice(0,5).map((g,i) => `($1,$${i+2})`).join(",");
+        await pool.query(`INSERT INTO book_genres (book_id,genre) VALUES ${genreVals} ON CONFLICT DO NOTHING`, [req.params.id, ...genres.slice(0,5)]);
       }
     }
     if (Array.isArray(trigger_warnings)) {
       await pool.query("DELETE FROM book_tw WHERE book_id=$1", [req.params.id]);
-      for (const t of trigger_warnings) {
-        await pool.query("INSERT INTO book_tw (book_id,tag) VALUES ($1,$2) ON CONFLICT DO NOTHING", [req.params.id,t]);
+      if (trigger_warnings.length > 0) {
+        const twVals = trigger_warnings.map((t,i) => `($1,$${i+2})`).join(",");
+        await pool.query(`INSERT INTO book_tw (book_id,tag) VALUES ${twVals} ON CONFLICT DO NOTHING`, [req.params.id, ...trigger_warnings]);
       }
     }
     const { rows: [book] }    = await pool.query("SELECT * FROM books WHERE id=$1", [req.params.id]);
@@ -148,7 +150,7 @@ router.delete("/:id", auth, async (req, res) => {
   try {
     const { rows: [book] } = await pool.query("SELECT added_by FROM books WHERE id=$1", [req.params.id]);
     if (!book) return res.status(404).json({ error: "Not found" });
-    if (book.added_by !== req.user.id && !req.user.isAdmin)
+    if (book.added_by !== req.user.id && !req.user.is_admin)
       return res.status(403).json({ error: "Forbidden" });
     await pool.query("DELETE FROM books WHERE id=$1", [req.params.id]);
     res.json({ deleted: true });

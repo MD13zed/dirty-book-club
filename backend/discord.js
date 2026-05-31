@@ -94,6 +94,7 @@ async function announceBookOfTheMonth({ title, author, series, genres, cover_url
   const threadName = `${month} 📖 ${title}`;
 
   const msg = await discordAPI("POST", `/channels/${BOTM_CHANNEL_ID}/messages`, {
+    content: "<@&1445035924227493928>",
     embeds: [{
       title:       `📔 Book of the Month — ${month}`,
       description: `**${title}**${seriesStr}\nby *${author || "Unknown"}*`,
@@ -118,6 +119,7 @@ async function postTbrPoll({ books, duration_hours = 48 }) {
   if (!BOT_TOKEN) { console.warn("DISCORD_BOT_TOKEN not set"); return; }
 
   await discordAPI("POST", `/channels/${BOTM_CHANNEL_ID}/messages`, {
+    content: "<@&1445035924227493928>",
     poll: {
       question:         { text: "📚 Which book should we read next?" },
       answers:          books.map(b => ({

@@ -59,9 +59,11 @@ router.get("/members", async (req, res) => {
 
 // PATCH /api/admin/members/:id/admin
 router.patch("/members/:id/admin", async (req, res) => {
-  if (req.params.id === req.user.id) return res.status(400).json({ error: "Cannot change own admin status" });
-  await pool.query("UPDATE members SET is_admin=$1 WHERE id=$2", [!!req.body.is_admin, req.params.id]);
-  res.json({ updated: true });
+  try {
+    if (req.params.id === req.user.id) return res.status(400).json({ error: "Cannot change own admin status" });
+    await pool.query("UPDATE members SET is_admin=$1 WHERE id=$2", [!!req.body.is_admin, req.params.id]);
+    res.json({ updated: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // DELETE /api/admin/members/:id
