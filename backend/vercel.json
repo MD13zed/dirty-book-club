@@ -1,15 +1,5 @@
 {
   "version": 2,
   "builds": [{ "src": "server.js", "use": "@vercel/node" }],
-  "routes": [{ "src": "/(.*)", "dest": "server.js" }],
-  "crons": [
-    {
-      "path": "/api/digest",
-      "schedule": "0 16 * * 0"
-    },
-    {
-      "path": "/api/yearend",
-      "schedule": "0 4 1 1 *"
-    }
-  ]
+  "routes": [{ "src": "/(.*)", "dest": "server.js" }]
 }
