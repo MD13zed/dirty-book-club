@@ -152,17 +152,40 @@ const truncate = (str, max = 4000) => str.length > max ? str.slice(0, max) + "\n
   }
 
   // ── Post to Discord ───────────────────────────────────────────────────────
-  const res = await fetch(WEBHOOK, {
-    method:  "POST",
-    headers: { "Content-Type":"application/json" },
-    body:    JSON.stringify({
-      content:    "<@&1445035924227493928>",
-      username:   "Spicy Shelf",
-      embeds,
-    }),
-  });
+  // Discord limits: max 10 embeds per message, max 6000 total chars per message
+  // Split into chunks that stay under the limit
+  const chunks = [];
+  let current = [], currentSize = 0;
+  for (const embed of embeds) {
+    const size = JSON.stringify(embed).length;
+    if (current.length > 0 && (currentSize + size > 5500 || current.length >= 10)) {
+      chunks.push(current);
+      current = []; currentSize = 0;
+    }
+    current.push(embed);
+    currentSize += size;
+  }
+  if (current.length) chunks.push(current);
 
-  if (!res.ok) throw new Error(`Webhook failed: ${res.status} ${await res.text()}`);
+  for (let i = 0; i < chunks.length; i++) {
+    const payload = {
+      username: "Spicy Shelf",
+      embeds: chunks[i],
+    };
+    // Only ping the role on the first message
+    if (i === 0) payload.content = "<@&1445035924227493928>";
+
+    const r = await fetch(WEBHOOK, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify(payload),
+    });
+    if (!r.ok) throw new Error(`Webhook failed: ${r.status} ${await r.text()}`);
+
+    // Small delay between messages to avoid rate limiting
+    if (i < chunks.length - 1) await new Promise(res => setTimeout(res, 1000));
+  }
+
   return { ok:true, sections: embeds.length };
 }
 
