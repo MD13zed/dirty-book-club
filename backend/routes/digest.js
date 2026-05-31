@@ -84,14 +84,16 @@ async function postDigest() {
     });
   }
 
+const truncate = (str, max = 4000) => str.length > max ? str.slice(0, max) + "\n…" : str;
+
   // New books
   if (newBooks.length > 0) {
     embeds.push({
       title: `📚 Added this week — ${newBooks.length} book${newBooks.length!==1?"s":""}`,
-      description: newBooks.map(b => {
+      description: truncate(newBooks.map(b => {
         const who = b.display_name || b.username;
         return `**${b.title}**${b.author?` *by ${b.author}*`:""} — added by ${who}`;
-      }).join("\n"),
+      }).join("\n")),
       color: color.purple,
     });
   }
@@ -100,7 +102,7 @@ async function postDigest() {
   if (reading.length > 0) {
     embeds.push({
       title: `📖 Currently reading`,
-      description: reading.map(r => {
+      description: truncate(reading.map(r => {
         const who  = r.display_name || r.username;
         let line   = `**${who}** — ${r.title}`;
         if (r.current_page && r.total_pages) {
@@ -110,7 +112,7 @@ async function postDigest() {
           line        += `\n\`${bar}\` ${pct}%`;
         }
         return line;
-      }).join("\n\n"),
+      }).join("\n\n")),
       color: color.green,
     });
   }
@@ -119,13 +121,13 @@ async function postDigest() {
   if (reviews.length > 0) {
     embeds.push({
       title: `⭐ Reviews this week`,
-      description: reviews.map(r => {
+      description: truncate(reviews.map(r => {
         const who   = r.display_name || r.username;
         const stars = "⭐".repeat(r.rating);
         let line    = `**${r.title}** — ${stars} by ${who}`;
         if (r.notes) line += `\n*"${r.notes.slice(0, 100)}${r.notes.length > 100 ? "…" : ""}"*`;
         return line;
-      }).join("\n\n"),
+      }).join("\n\n")),
       color: color.pink,
     });
   }
@@ -134,9 +136,9 @@ async function postDigest() {
   if (noms.length > 0) {
     embeds.push({
       title: `🗳 Current nominations`,
-      description: noms.map((n, i) =>
+      description: truncate(noms.map((n, i) =>
         `**${i+1}.** ${n.title} — ${n.vote_count} vote${n.vote_count!==1?"s":""}`
-      ).join("\n"),
+      ).join("\n")),
       color: color.purple,
     });
   }
