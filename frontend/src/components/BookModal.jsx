@@ -73,6 +73,7 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
   const [myNotes,  setMyNotes]    = useState("");
   const [saved,    setSaved]      = useState(false);
   const [saving, setSaving] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
   const [confirmDelReview, setConfirmDelReview] = useState(false);
   const [editing,  setEditing]    = useState(false);
   const [editForm, setEditForm]   = useState({
