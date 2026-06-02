@@ -107,10 +107,16 @@ async function announceBookOfTheMonth({ title, author, series, genres, cover_url
   });
 
   if (msg.id) {
-    await discordAPI("POST", `/channels/${BOTM_CHANNEL_ID}/messages/${msg.id}/threads`, {
-      name:                  threadName,
-      auto_archive_duration: 10080,
-    });
+    try {
+      await discordAPI("POST", `/channels/${BOTM_CHANNEL_ID}/messages/${msg.id}/threads`, {
+        name:                  threadName,
+        auto_archive_duration: 10080,
+      });
+    } catch (e) {
+      console.error("Thread creation failed:", e.message);
+    }
+  } else {
+    console.error("BOTM message post did not return an ID:", JSON.stringify(msg));
   }
 }
 
