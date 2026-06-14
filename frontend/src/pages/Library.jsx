@@ -39,7 +39,68 @@ async function searchOpenLibrary(query) {
     isbn:        (d.isbn || [])[0] || "",
     series:      (d.series || [])[0] || "",
     subjects:    d.subject || [],
+    source:      "openlibrary",
   }));
+}
+
+// ── Google Books search ────────────────────────────────────────────────────
+// Covers indie/self-published titles much better than Open Library.
+// No API key needed for basic search queries.
+async function searchGoogleBooks(query) {
+  if (!query || query.length < 3) return [];
+  const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=6`;
+  const res = await fetch(url);
+  const data = await res.json();
+  return (data.items || []).map(item => {
+    const info = item.volumeInfo || {};
+    // Google Books doesn't have a dedicated "series" field — sometimes
+    // present in subtitle, e.g. "Rogue Riders Duet, Book 2"
+    const series = info.subtitle && /book\s*\d|#\d|series|duet|trilogy/i.test(info.subtitle)
+      ? info.subtitle
+      : "";
+    return {
+      title:       info.title || "",
+      author:      (info.authors || [])[0] || "",
+      cover_url:   info.imageLinks?.thumbnail?.replace("http://", "https://") || "",
+      total_pages: info.pageCount || "",
+      isbn:        (info.industryIdentifiers || []).find(id => id.type === "ISBN_13")?.identifier
+                 || (info.industryIdentifiers || []).find(id => id.type === "ISBN_10")?.identifier
+                 || "",
+      series,
+      subjects:    info.categories || [],
+      source:      "googlebooks",
+    };
+  });
+}
+
+// ── Merge & dedupe search results ──────────────────────────────────────────
+// Combines results from multiple sources, removing entries that represent
+// the same book (matched on normalized title + author). Open Library results
+// are kept over Google Books duplicates when both exist, since Open Library
+// covers tend to be slightly higher quality — but Google Books-only hits
+// (common for indie/self-published books) are always included.
+function normalizeKey(title, author) {
+  const norm = s => (s || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
+  return `${norm(title)}|${norm(author)}`;
+}
+
+function mergeSearchResults(openLibraryResults, googleBooksResults, limit = 8) {
+  const merged = [];
+  const seen   = new Set();
+
+  for (const r of openLibraryResults) {
+    const key = normalizeKey(r.title, r.author);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(r);
+  }
+  for (const r of googleBooksResults) {
+    const key = normalizeKey(r.title, r.author);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(r);
+  }
+  return merged.slice(0, limit);
 }
 
 // ── Goodreads CSV parser ───────────────────────────────────────────────────
@@ -387,7 +448,7 @@ export default function Library() {
 
   useEffect(() => { load(); }, []);
 
-  // ── Debounced Open Library search ──────────────────────────────────────
+  // ── Debounced search — Open Library + Google Books, merged ──────────────
   const handleBookQueryChange = (val) => {
     setBookQuery(val);
     clearTimeout(searchDebounce.current);
@@ -395,8 +456,20 @@ export default function Library() {
     searchDebounce.current = setTimeout(async () => {
       setSearchLoading(true);
       try {
-        const results = await searchOpenLibrary(val);
-        setSearchResults(results);
+        const [olResults, gbResults] = await Promise.all([
+          searchOpenLibrary(val).catch(() => []),
+          searchGoogleBooks(val).catch(() => []),
+        ]);
+        const merged = mergeSearchResults(olResults, gbResults);
+
+        // Flag results that match a book already in the library
+        const existingTitles = new Set(books.map(b => b.title.toLowerCase().trim()));
+        const flagged = merged.map(r => ({
+          ...r,
+          alreadyInLibrary: existingTitles.has((r.title || "").toLowerCase().trim()),
+        }));
+
+        setSearchResults(flagged);
         setShowResults(true);
       } catch {}
       setSearchLoading(false);
@@ -801,6 +874,11 @@ export default function Library() {
                             {r.author}{r.total_pages ? ` · ${r.total_pages}pp` : ""}
                           </div>
                         </div>
+                        {r.alreadyInLibrary && (
+                          <span style={{ fontFamily:"monospace", fontSize:10, color:C.accent2, border:`1px solid ${C.accent2}55`, borderRadius:3, padding:"2px 6px", flexShrink:0, whiteSpace:"nowrap" }}>
+                            In library
+                          </span>
+                        )}
                       </div>
                     ))}
                   </div>
