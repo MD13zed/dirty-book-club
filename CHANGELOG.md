@@ -4,6 +4,21 @@ All notable changes to The Spicy Shelf are documented here.
 
 ---
 
+## [3.5.0] — 2026-06-14
+
+### Added
+- **🎉 Club Applause** — weekly digest now includes a monthly shoutout section: top 3 readers (most books finished this calendar month) and top 3 reviewers (most reviews left this calendar month), with medal rankings. Section is skipped if nobody qualifies.
+
+### Changed
+- **Weekly digest schedule** — moved from Sundays 4pm UTC to **12pm UTC**, scheduled via cron-job.org.
+- **Top readers query** — now based on `finished_at` (the date a book was actually marked finished) instead of `updated_at`, so editing an unrelated field on an old entry no longer affects which month a finish counts toward.
+- **Leaderboard tie-breaking** — top readers and top reviewers now sort alphabetically by display name as a tiebreaker for equal counts, for deterministic ordering.
+
+### Fixed
+- **PWA icon** — `manifest.json` declared icons as `purpose: "any maskable"`, but the artwork is a circular badge with transparent padding that doesn't fill the maskable safe zone, causing the icon to appear cropped/wrong on Android home screens and in some browser contexts. Changed to `purpose: "any"` to match the actual artwork.
+
+---
+
 ## [3.4.0] — 2026-05-26
 
 ### Added

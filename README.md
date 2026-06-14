@@ -88,6 +88,12 @@ A private book club library for tracking, reviewing, and discussing reads togeth
 ### Mobile
 Installable as a PWA on iOS (Safari → Add to Home Screen) and Android (Chrome → Add to Home Screen)
 
+### Weekly Digest
+- Posted automatically to `library-updates` every Sunday at 12pm UTC via [cron-job.org](https://cron-job.org)
+- Includes: current Book of the Month, manually added books this week, who's currently reading with progress bars, reviews left this week, and current nominations
+- **🎉 Club Applause** — top 3 readers (most books finished this calendar month) and top 3 reviewers (most reviews left this calendar month), with medal rankings
+- Falls back to a "Quiet week 🌙" message if nothing happened
+
 ---
 
 ## Tech Stack
@@ -138,6 +144,7 @@ nomination_votes  — one vote per member per nomination
 | `CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name |
 | `CLOUDINARY_API_KEY` | Cloudinary API key |
 | `CLOUDINARY_API_SECRET` | Cloudinary API secret |
+| `CRON_SECRET` | Bearer token required to call `/api/digest` and `/api/yearend` |
 | `FRONTEND_URL` | Frontend deployment URL |
 | `API_URL` | Backend deployment URL |
 
@@ -185,6 +192,19 @@ Genres and trigger warnings can be added to imported books by clicking into them
 
 ---
 
+## Scheduled Jobs (cron-job.org)
+
+The weekly digest and year-end digest are triggered by [cron-job.org](https://cron-job.org) (free) — not Vercel cron, and no server/SSH involved.
+
+| Job | Endpoint | Schedule |
+|---|---|---|
+| Weekly Digest | `GET /api/digest` | Sundays, 12:00 UTC |
+| Year-End Digest | `GET /api/yearend` | End of year |
+
+Each job sends `Authorization: Bearer <CRON_SECRET>` as a custom header. To change the schedule, edit the job directly in the cron-job.org dashboard — no code changes needed, the routes compute "this week" / "this month" / "this year" relative to whenever they're called.
+
+---
+
 ## Deploying Updates
 
 ```bash
@@ -205,4 +225,5 @@ Vercel auto-deploys both frontend and backend on every push.
 | Neon | PostgreSQL database | 0.5GB, never pauses |
 | Cloudinary | Book cover image storage | 25GB storage, 25GB bandwidth/month |
 | Discord | OAuth login + bot + webhooks | Free |
+| cron-job.org | Weekly/year-end digest scheduling | Free |
 | Open Library | Book metadata + cover lookup | Free, no API key needed |
