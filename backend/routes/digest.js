@@ -64,6 +64,33 @@ async function postDigest() {
     ORDER BY TO_DATE(botm_month, 'Month YYYY') DESC LIMIT 1
   `);
 
+  // ── Monthly applause — top readers & reviewers (calendar month to date) ────
+  const monthStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthStart     = monthStartDate.toISOString();          // for reviews.updated_at (timestamptz)
+  const monthStartDay  = monthStartDate.toISOString().slice(0, 10); // for reading_progress.finished_at (date)
+
+  const { rows: topReaders } = await pool.query(`
+    SELECT m.display_name, m.username, COUNT(*)::int AS books_finished
+    FROM reading_progress rp
+    JOIN members m ON m.id = rp.member_id
+    WHERE rp.status = 'finished'
+      AND rp.finished_at >= $1
+    GROUP BY m.id, m.display_name, m.username
+    ORDER BY books_finished DESC, LOWER(COALESCE(m.display_name, m.username)) ASC
+    LIMIT 3
+  `, [monthStartDay]);
+
+  const { rows: topReviewers } = await pool.query(`
+    SELECT m.display_name, m.username, COUNT(*)::int AS review_count
+    FROM reviews r
+    JOIN members m ON m.id = r.member_id
+    WHERE r.rating > 0
+      AND r.updated_at >= $1
+    GROUP BY m.id, m.display_name, m.username
+    ORDER BY review_count DESC, LOWER(COALESCE(m.display_name, m.username)) ASC
+    LIMIT 3
+  `, [monthStart]);
+
   // ── Build embeds ──────────────────────────────────────────────────────────
   const embeds = [];
 
@@ -140,6 +167,37 @@ const truncate = (str, max = 4000) => str.length > max ? str.slice(0, max) + "\n
         `**${i+1}.** ${n.title} — ${n.vote_count} vote${n.vote_count!==1?"s":""}`
       ).join("\n")),
       color: color.purple,
+    });
+  }
+
+  // Club Applause — monthly shoutouts
+  const monthLabel = now.toLocaleDateString("en-US", { month: "long" });
+  const applauseLines = [];
+
+  if (topReaders.length > 0) {
+    applauseLines.push(`**📚 Top Readers — ${monthLabel}**`);
+    topReaders.forEach((r, i) => {
+      const who = r.display_name || r.username;
+      const medal = ["🥇", "🥈", "🥉"][i] || "•";
+      applauseLines.push(`${medal} **${who}** — ${r.books_finished} book${r.books_finished !== 1 ? "s" : ""} finished`);
+    });
+  }
+
+  if (topReviewers.length > 0) {
+    if (applauseLines.length > 0) applauseLines.push("");
+    applauseLines.push(`**⭐ Top Reviewers — ${monthLabel}**`);
+    topReviewers.forEach((r, i) => {
+      const who = r.display_name || r.username;
+      const medal = ["🥇", "🥈", "🥉"][i] || "•";
+      applauseLines.push(`${medal} **${who}** — ${r.review_count} review${r.review_count !== 1 ? "s" : ""}`);
+    });
+  }
+
+  if (applauseLines.length > 0) {
+    embeds.push({
+      title:       `🎉 Club Applause`,
+      description: applauseLines.join("\n"),
+      color:       color.gold,
     });
   }
 
