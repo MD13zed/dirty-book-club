@@ -16,6 +16,30 @@ function useIsMobile() {
   return isMobile;
 }
 
+// ── Strip trailing series/edition info from a title ────────────────────────
+// Search results (Open Library, Google Books) often embed series info in the
+// title itself, e.g. "Twisted Trails (Rogue Riders Duet Book 2)" or
+// "The Name of the Wind (The Kingkiller Chronicle, #1)". Our library stores
+// series separately, so for matching/dedup purposes (and when filling the
+// form) we strip this trailing parenthetical to get the core title.
+// Returns { title, series } — series is "" if nothing was stripped.
+function stripSeriesFromTitle(rawTitle) {
+  if (!rawTitle) return { title: "", series: "" };
+  const match = rawTitle.match(/^(.+?)\s*\((.+)\)\s*$/);
+  if (!match) return { title: rawTitle.trim(), series: "" };
+
+  const core   = match[1].trim();
+  const inside = match[2].trim();
+
+  // Only treat the parenthetical as series info if it looks like one —
+  // contains "book N", "#N", "series", "duet", "trilogy", etc. Otherwise
+  // it might just be a subtitle/clarification and shouldn't be stripped.
+  if (/book\s*\d|#\s*\d|\bseries\b|\bduet\b|\btrilogy\b|\bsaga\b/i.test(inside)) {
+    return { title: core, series: inside };
+  }
+  return { title: rawTitle.trim(), series: "" };
+}
+
 const SORTS = [
   { value:"added_at",   label:"Recently Added" },
   { value:"date_read",  label:"Recently Read"  },
@@ -75,13 +99,15 @@ async function searchGoogleBooks(query) {
 
 // ── Merge & dedupe search results ──────────────────────────────────────────
 // Combines results from multiple sources, removing entries that represent
-// the same book (matched on normalized title + author). Open Library results
+// the same book (matched on normalized core title + author, with any
+// series/edition info stripped from the title first). Open Library results
 // are kept over Google Books duplicates when both exist, since Open Library
 // covers tend to be slightly higher quality — but Google Books-only hits
 // (common for indie/self-published books) are always included.
 function normalizeKey(title, author) {
   const norm = s => (s || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
-  return `${norm(title)}|${norm(author)}`;
+  const { title: coreTitle } = stripSeriesFromTitle(title);
+  return `${norm(coreTitle)}|${norm(author)}`;
 }
 
 function mergeSearchResults(openLibraryResults, googleBooksResults, limit = 8) {
@@ -462,11 +488,18 @@ export default function Library() {
         ]);
         const merged = mergeSearchResults(olResults, gbResults);
 
-        // Flag results that match a book already in the library
-        const existingTitles = new Set(books.map(b => b.title.toLowerCase().trim()));
+        // Flag results that match a book already in the library.
+        // Match on normalized title+author first (handles subtitle/edition
+        // differences like "Twisted Trails" vs "Twisted Trails (Rogue Riders
+        // Duet Book 2)"); fall back to title-only in case author is missing
+        // on either side.
+        const existingByTitleAuthor = new Set(books.map(b => normalizeKey(b.title, b.author)));
+        const existingByTitleOnly   = new Set(books.map(b => normalizeKey(b.title, "")));
         const flagged = merged.map(r => ({
           ...r,
-          alreadyInLibrary: existingTitles.has((r.title || "").toLowerCase().trim()),
+          alreadyInLibrary:
+            existingByTitleAuthor.has(normalizeKey(r.title, r.author)) ||
+            existingByTitleOnly.has(normalizeKey(r.title, "")),
         }));
 
         setSearchResults(flagged);
@@ -482,13 +515,18 @@ export default function Library() {
       result.subjects.some(s => s.toLowerCase().includes(g.toLowerCase()) || g.toLowerCase().includes(s.toLowerCase()))
     ).slice(0, 5);
 
+    // Some results embed series info in the title itself, e.g.
+    // "Twisted Trails (Rogue Riders Duet Book 2)" — split that out so the
+    // title field stays clean and the series field gets populated.
+    const { title: cleanTitle, series: titleSeries } = stripSeriesFromTitle(result.title);
+
     setForm(f => ({
       ...f,
-      title:       result.title,
+      title:       cleanTitle || result.title,
       author:      result.author,
       cover_url:   result.cover_url,
       total_pages: result.total_pages ? String(result.total_pages) : f.total_pages,
-      series:      result.series || f.series,
+      series:      result.series || titleSeries || f.series,
       genres:      matchedGenres.length > 0 ? matchedGenres : f.genres,
     }));
     setBookQuery("");

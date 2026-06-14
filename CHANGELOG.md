@@ -8,8 +8,9 @@ All notable changes to The Spicy Shelf are documented here.
 
 ### Added
 - **Google Books merged into search-to-prefill** — adding a book now searches both Open Library and Google Books and merges the results. Open Library has good coverage for traditionally published books, but misses most indie and self-published titles (which make up a lot of what the club reads) — Google Books fills that gap.
-- **Duplicate results removed** — if the same book appears in both sources, it's only shown once (matched by normalized title + author).
-- **"In library" badge** — search results that match a book already in the library are flagged with a small badge, so you can spot accidental re-adds before adding.
+- **Duplicate results removed** — if the same book appears in both sources, it's only shown once (matched by normalized title + author, with series/edition info stripped from the title first).
+- **"In library" badge** — search results that match a book already in the library are flagged with a small badge, so you can spot accidental re-adds before adding. Matches even when the search result's title includes series info that your library entry doesn't (e.g. "Twisted Trails" vs "Twisted Trails (Rogue Riders Duet Book 2)").
+- **Cleaner autofill for series titles** — picking a search result whose title embeds series info (e.g. "Book 2", "#1", "Duet", "Trilogy", "Saga") now splits that into the Series field automatically, leaving the Title field clean.
 
 ### Notes
 - Google Books API requires no API key for basic search, same as Open Library — no new environment variables or backend changes.
