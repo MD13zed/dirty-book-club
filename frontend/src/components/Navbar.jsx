@@ -19,8 +19,30 @@ export default function Navbar() {
   const [themeOpen, setThemeOpen] = useState(false);
   const nav = useNavigate();
   const isMobile = useIsMobile();
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [showInstall, setShowInstall] = useState(false);
+
+  useEffect(() => {
+    const handler = e => {
+      e.preventDefault();
+      setInstallPrompt(e);
+      setShowInstall(true);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    window.addEventListener("appinstalled", () => setShowInstall(false));
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === "accepted") setShowInstall(false);
+    setInstallPrompt(null);
+  };
 
   return (
+    <>
     <nav style={{ background:`linear-gradient(180deg,${C.bg2},${C.bg})`, borderBottom:`1px solid ${C.border}`, padding: isMobile ? "10px 16px" : "12px 24px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, position:"sticky", top:0, zIndex:50, backdropFilter:"blur(8px)" }}>
 
       <Link to="/" style={{ textDecoration:"none", display:"flex", alignItems:"baseline", gap:8 }}>
@@ -87,5 +109,27 @@ export default function Navbar() {
         </div>
       )}
     </nav>
+
+    {/* PWA install banner — Android Chrome only, shown once browser fires beforeinstallprompt */}
+    {showInstall && isMobile && (
+      <div style={{ background:`linear-gradient(135deg,${C.accent},${C.accent2})`, padding:"10px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <img src="/icon-192.png" alt="" style={{ width:32, height:32, borderRadius:6 }} />
+          <div>
+            <div style={{ fontFamily:"'Playfair Display',serif", fontSize:13, fontWeight:700, color:C.bg }}>Add to Home Screen</div>
+            <div style={{ fontFamily:"monospace", fontSize:10, color:C.bg, opacity:0.75 }}>Install the app for quick access</div>
+          </div>
+        </div>
+        <div style={{ display:"flex", gap:8, flexShrink:0 }}>
+          <button onClick={handleInstall} style={{ background:C.bg, border:"none", borderRadius:4, color:C.accent, fontFamily:"'Playfair Display',serif", fontSize:12, fontWeight:700, padding:"6px 14px", cursor:"pointer" }}>
+            Install
+          </button>
+          <button onClick={() => setShowInstall(false)} style={{ background:"transparent", border:`1px solid ${C.bg}55`, borderRadius:4, color:C.bg, fontFamily:"monospace", fontSize:11, padding:"6px 10px", cursor:"pointer" }}>
+            ✕
+          </button>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

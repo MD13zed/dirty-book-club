@@ -4,6 +4,13 @@ All notable changes to The Spicy Shelf are documented here.
 
 ---
 
+## [3.5.1] — 2026-06-17
+
+### Added
+- **PWA install banner on Android** — when Chrome detects the site is installable, a banner appears below the navbar with an Install button and a dismiss ✕. Tapping Install triggers the native browser prompt. Banner is hidden once installed or dismissed.
+
+---
+
 ## [3.6.0] — 2026-06-14
 
 ### Added
