@@ -33,6 +33,17 @@ All notable changes to The Spicy Shelf are documented here.
 
 ---
 
+## [3.5.0] — 2026-06-17
+
+### Changed (mobile only)
+- **Bottom sheet modal** — book cards now slide up from the bottom as a sheet with a drag handle and rounded top corners instead of a floating card. Max height 92dvh with internal scroll.
+- **Safe area insets** — body now respects `env(safe-area-inset-bottom)` so content isn't hidden behind the iPhone home bar. Modal sheet also pads for the home bar.
+- **Larger star tap targets** — star rating in the review section is 32px on mobile (was 22px) for easier tapping.
+- **Status change toast** — tapping a reading status button (Reading, Finished, DNF, etc.) now shows a brief confirmation toast at the bottom of the modal.
+- **Theme picker in mobile navbar** — 🎨 pill next to the profile avatar opens a popover with all theme options. Admin ⚙ badge stays between theme and avatar.
+- **Add book as bottom sheet** — tapping "+ Add Book" on mobile opens a bottom sheet overlay instead of expanding inline above the grid.
+- **Nominations tighter layout** — nomination cards are more compact on mobile, vote button is larger (48×48px min) and stacks the arrow above the count for easier tapping. Title truncates cleanly.
+
 ## [3.4.1] — 2026-06-17
 
 ### Fixed

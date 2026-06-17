@@ -641,7 +641,7 @@ export default function Library() {
 
       {/* ── NOMINATIONS VIEW ── */}
       {view==="nominations" && (
-        <div style={{ padding:"24px", maxWidth:720, margin:"0 auto" }}>
+        <div style={{ padding: isMobile ? "16px 12px" : "24px", maxWidth:720, margin:"0 auto" }}>
           <div style={{ fontFamily:"'EB Garamond',serif", fontSize:14, color:C.dimmer, fontStyle:"italic", marginBottom:20 }}>
             Members nominate books for the next Book of the Month. Upvote your favourites — the admin picks from the shortlist.
           </div>
@@ -654,12 +654,12 @@ export default function Library() {
             </div>
           )}
 
-          <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+          <div style={{ display:"flex", flexDirection:"column", gap: isMobile ? 8 : 12 }}>
             {[...noms].sort((a,b) => (b.vote_count||0) - (a.vote_count||0)).map(n => (
-              <div key={n.id} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:6, padding:"16px 18px", display:"flex", gap:14, alignItems:"center" }}>
-                {n.cover_url && <img src={n.cover_url} alt={n.title} style={{ width:44, height:62, objectFit:"cover", borderRadius:3, flexShrink:0 }} />}
+              <div key={n.id} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:6, padding: isMobile ? "12px" : "16px 18px", display:"flex", gap: isMobile ? 10 : 14, alignItems:"center" }}>
+                {n.cover_url && <img src={n.cover_url} alt={n.title} style={{ width: isMobile ? 36 : 44, height: isMobile ? 50 : 62, objectFit:"cover", borderRadius:3, flexShrink:0 }} />}
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontFamily:"'Playfair Display',serif", fontSize:16, color:C.text, fontWeight:700 }}>{n.title}</div>
+                  <div style={{ fontFamily:"'Playfair Display',serif", fontSize: isMobile ? 14 : 16, color:C.text, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{n.title}</div>
                   {n.author && <div style={{ fontFamily:"'EB Garamond',serif", fontSize:13, color:C.muted, fontStyle:"italic" }}>by {n.author}</div>}
                   <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, marginTop:4 }}>
                     Nominated by{" "}
@@ -669,10 +669,11 @@ export default function Library() {
                     </span>
                   </div>
                 </div>
-                <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:8 }}>
+                <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:6 }}>
                   <button onClick={()=>vote(n.id, n.i_voted)}
-                    style={{ background:n.i_voted?C.accent2+"33":"transparent", border:`1px solid ${n.i_voted?C.accent2:C.border}`, borderRadius:6, color:n.i_voted?C.accent2:C.dim, fontFamily:"monospace", fontSize:12, padding:"6px 14px", cursor:"pointer", transition:"all 0.15s" }}>
-                    ▲ {n.vote_count}
+                    style={{ background:n.i_voted?C.accent2+"33":"transparent", border:`1px solid ${n.i_voted?C.accent2:C.border}`, borderRadius:6, color:n.i_voted?C.accent2:C.dim, fontFamily:"monospace", fontSize: isMobile ? 13 : 12, padding: isMobile ? "10px 14px" : "6px 14px", cursor:"pointer", transition:"all 0.15s", minWidth: isMobile ? 48 : "auto", minHeight: isMobile ? 48 : "auto", display:"flex", flexDirection:"column", alignItems:"center", gap:2 }}>
+                    <span style={{ fontSize: isMobile ? 14 : 12 }}>▲</span>
+                    <span style={{ fontWeight:700 }}>{n.vote_count}</span>
                   </button>
                   {(n.i_nominated||user?.is_admin) && (
                     confirmRemoveNom === n.id
@@ -872,9 +873,11 @@ export default function Library() {
           )}
 
           {/* Add form */}
-          {showForm && (
-            <div style={{ background:C.bg2, borderBottom:`1px solid ${C.border}`, padding: isMobile ? "16px 12px" : "20px 24px" }}>
-              <div style={{ fontFamily:"'Playfair Display',serif", fontSize:17, marginBottom:14, color:C.accent, fontStyle:"italic" }}>Add a Book to the Club</div>
+          {showForm && isMobile && (
+            <div onClick={closeForm} style={{ position:"fixed", inset:0, background:"#00000099", zIndex:100, display:"flex", alignItems:"flex-end" }}>
+              <div onClick={e=>e.stopPropagation()} style={{ background:C.bg2, borderTop:`1px solid ${C.border}`, borderRadius:"16px 16px 0 0", padding:"0 16px 20px", width:"100%", maxHeight:"90dvh", overflowY:"auto", paddingBottom:`calc(20px + env(safe-area-inset-bottom))` }}>
+                <div style={{ width:36, height:4, background:"#3d2f5e", borderRadius:2, margin:"10px auto 16px" }} />
+                <div style={{ fontFamily:"'Playfair Display',serif", fontSize:17, marginBottom:14, color:C.accent, fontStyle:"italic" }}>Add a Book to the Club</div>
 
               {/* ── Open Library search ── */}
               <div style={{ marginBottom:18, position:"relative" }}>
@@ -926,6 +929,91 @@ export default function Library() {
               {/* Manual fields */}
               <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill,minmax(200px,1fr))", gap:12, marginBottom:14 }}>
                 <div style={{ gridColumn: isMobile ? "auto" : "span 2" }}>
+                  <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.dimmer, marginBottom:3 }}>TITLE *</label>
+                  <input ref={titleRef} value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} style={INP} />
+                </div>
+                <div>
+                  <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.dimmer, marginBottom:3 }}>AUTHOR</label>
+                  <input value={form.author} onChange={e=>setForm(f=>({...f,author:e.target.value}))} style={INP} />
+                </div>
+                <div>
+                  <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.dimmer, marginBottom:3 }}>SERIES</label>
+                  <input value={form.series} onChange={e=>setForm(f=>({...f,series:e.target.value}))} style={INP} />
+                </div>
+                <div>
+                  <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.dimmer, marginBottom:3 }}>DATE READ</label>
+                  <input type="date" value={form.date_read} onChange={e=>setForm(f=>({...f,date_read:e.target.value}))} style={{...INP,colorScheme:"dark"}} />
+                </div>
+                <div>
+                  <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.dimmer, marginBottom:3 }}>TOTAL PAGES</label>
+                  <input type="number" value={form.total_pages} onChange={e=>setForm(f=>({...f,total_pages:e.target.value}))} placeholder="e.g. 400" style={INP} />
+                </div>
+                <div>
+                  <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.dimmer, marginBottom:3 }}>COVER URL</label>
+                  <input value={form.cover_url} onChange={e=>setForm(f=>({...f,cover_url:e.target.value}))} placeholder="https://…" style={INP} />
+                </div>
+                <div>
+                  <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.dimmer, marginBottom:3 }}>UPLOAD COVER</label>
+                  <input type="file" accept="image/*" onChange={e=>setCoverFile(e.target.files[0])} style={{ color:C.muted, fontFamily:"monospace", fontSize:12, marginTop:6 }} />
+                </div>
+              </div>
+              <div style={{ marginBottom:14 }}>
+                <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.dimmer, marginBottom:8 }}>GENRES — pick up to 5</label>
+                <GenrePicker value={form.genres} onChange={g=>setForm(f=>({...f,genres:g}))} />
+              </div>
+              <div style={{ marginBottom:14 }}>
+                <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:"#c04040", marginBottom:8 }}>⚠ TRIGGER WARNINGS</label>
+                <TwPicker value={form.trigger_warnings} onChange={t=>setForm(f=>({...f,trigger_warnings:t}))} />
+              </div>
+              <div style={{ display:"flex", gap:10 }}>
+                <button onClick={addBook} style={{ background:`linear-gradient(135deg,${C.accent},${C.accent2})`, border:"none", borderRadius:3, color:C.bg, fontFamily:"'Playfair Display',serif", fontSize:13, fontWeight:700, padding:"8px 20px", cursor:"pointer" }}>Add to Library</button>
+                <button onClick={closeForm} style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:3, color:C.dim, fontFamily:"monospace", fontSize:12, padding:"8px 14px", cursor:"pointer" }}>Cancel</button>
+              </div>
+            </div>
+          )}
+
+          {showForm && !isMobile && (
+            <div style={{ background:C.bg2, borderBottom:`1px solid ${C.border}`, padding:"20px 24px" }}>
+              <div style={{ fontFamily:"'Playfair Display',serif", fontSize:17, marginBottom:14, color:C.accent, fontStyle:"italic" }}>Add a Book to the Club</div>
+
+              {/* ── Open Library search ── */}
+              <div style={{ marginBottom:18, position:"relative" }}>
+                <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.accent2, marginBottom:4 }}>🔍 SEARCH TO PRE-FILL</label>
+                <div style={{ position:"relative" }}>
+                  <input
+                    value={bookQuery}
+                    onChange={e => handleBookQueryChange(e.target.value)}
+                    onBlur={() => setTimeout(() => setShowResults(false), 150)}
+                    onFocus={() => searchResults.length > 0 && setShowResults(true)}
+                    placeholder="Type a title or author to look up details…"
+                    style={{ ...INP, paddingRight: searchLoading ? 36 : 11 }}
+                  />
+                  {searchLoading && (
+                    <span style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", color:C.dimmer, fontSize:12, fontFamily:"monospace" }}>…</span>
+                  )}
+                </div>
+                {showResults && searchResults.length > 0 && (
+                  <div style={{ position:"absolute", top:"100%", left:0, right:0, background:C.card, border:`1px solid ${C.border}`, borderRadius:4, zIndex:50, boxShadow:"0 8px 24px #0005", overflow:"hidden" }}>
+                    {searchResults.map((r, i) => (
+                      <div key={i}
+                        onMouseDown={e => { e.preventDefault(); pickSearchResult(r); }}
+                        style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 12px", borderBottom: i < searchResults.length-1 ? `1px solid ${C.border2}` : "none", cursor:"pointer", transition:"background 0.1s" }}
+                        onMouseEnter={e => e.currentTarget.style.background = C.bg2}
+                        onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                        {r.cover_url ? <img src={r.cover_url} alt="" style={{ width:28, height:40, objectFit:"cover", borderRadius:2, flexShrink:0 }} /> : <div style={{ width:28, height:40, background:C.border, borderRadius:2, flexShrink:0 }} />}
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontFamily:"'EB Garamond',serif", fontSize:14, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{r.title}</div>
+                          <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer }}>{r.author}{r.total_pages ? ` · ${r.total_pages}pp` : ""}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Manual fields */}
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))", gap:12, marginBottom:14 }}>
+                <div style={{ gridColumn:"span 2" }}>
                   <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.dimmer, marginBottom:3 }}>TITLE *</label>
                   <input ref={titleRef} value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} style={INP} />
                 </div>

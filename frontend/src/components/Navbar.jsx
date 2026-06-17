@@ -16,6 +16,7 @@ function useIsMobile() {
 export default function Navbar() {
   const { user, logout } = useAuth();
   const { C, theme, updateTheme } = useTheme();
+  const [themeOpen, setThemeOpen] = useState(false);
   const nav = useNavigate();
   const isMobile = useIsMobile();
 
@@ -55,6 +56,23 @@ export default function Navbar() {
 
       {isMobile && (
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <div style={{ position:"relative" }}>
+            <button
+              onClick={() => setThemeOpen(o => !o)}
+              style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:20, color:C.dim, fontFamily:"monospace", fontSize:11, padding:"5px 10px", cursor:"pointer", display:"flex", alignItems:"center", gap:4 }}>
+              🎨 <span>{THEMES[theme]?.label?.split(" ")[0]}</span>
+            </button>
+            {themeOpen && (
+              <div style={{ position:"absolute", top:"calc(100% + 6px)", right:0, background:C.card, border:`1px solid ${C.border}`, borderRadius:8, zIndex:200, minWidth:140, boxShadow:"0 8px 24px #0007", overflow:"hidden" }}>
+                {Object.entries(THEMES).map(([k,v]) => (
+                  <button key={k} onClick={() => { updateTheme(k); setThemeOpen(false); }}
+                    style={{ display:"block", width:"100%", background:theme===k?C.accent+"22":"transparent", border:"none", borderBottom:`1px solid ${C.border2}`, color:theme===k?C.accent:C.dim, fontFamily:"monospace", fontSize:12, padding:"10px 14px", cursor:"pointer", textAlign:"left" }}>
+                    {theme===k ? "✓ " : ""}{v.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           {user?.is_admin && (
             <Link to="/admin" style={{ fontFamily:"monospace", fontSize:12, color:C.accent, textDecoration:"none", padding:"5px 9px", border:`1px solid ${C.accent}44`, borderRadius:4 }}>⚙</Link>
           )}

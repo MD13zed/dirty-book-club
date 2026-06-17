@@ -1,4 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
+  return isMobile;
+}
 import { useNavigate } from "react-router-dom";
 import { useTheme, useAuth } from "../App";
 import { StarRating, Avatar, genreColor, ProgressBar, STATUS_LABELS, STATUS_COLORS, GenrePicker, TwPicker } from "./ui";
@@ -64,6 +74,7 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
   const { C }    = useTheme();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   const [book, setBook]           = useState(initialBook);
   const [reviews, setReviews]     = useState(allReviews || []);
@@ -75,6 +86,7 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
   const [saving, setSaving] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
   const [confirmDelReview, setConfirmDelReview] = useState(false);
+  const [progressToast, setProgressToast] = useState(null);
   const [editing,  setEditing]    = useState(false);
   const [editForm, setEditForm]   = useState({
     title:            book.title,
@@ -154,11 +166,17 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
     } finally { setSaving(false); }
   };
 
+  const STATUS_TOAST = { want_to_read:"📚 Want to read", reading:"📖 Now reading", finished:"✅ Marked finished", dnf:"💀 Marked DNF" };
+
   const saveProgress = async (updates) => {
     const p = { book_id:book.id, ...(progress||{}), ...updates };
     const saved = await api.saveProgress(p);
     setProgress(saved);
     onProgressSaved?.(saved);
+    if (isMobile && updates.status) {
+      setProgressToast(STATUS_TOAST[updates.status] || "Saved");
+      setTimeout(() => setProgressToast(null), 2000);
+    }
   };
 
   const saveEdit = async () => {
@@ -183,9 +201,10 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
   });
 
   return (
-    <div onClick={onClose} style={{ position:"fixed", inset:0, background:"#00000099", zIndex:100, display:"flex", alignItems:"flex-start", justifyContent:"center", padding:"12px 8px", overflowY:"auto" }}>
-      <div onClick={e=>e.stopPropagation()} style={{ background:`linear-gradient(160deg,${C.card},${C.card2})`, border:`1px solid ${C.border}`, borderLeft:`5px solid ${genres.length?genreColor(genres[0]):C.dim}`, borderRadius:6, maxWidth:560, width:"100%", boxShadow:"0 20px 60px #00000099", overflowY:"auto" }}>
+    <div onClick={onClose} style={{ position:"fixed", inset:0, background:"#00000099", zIndex:100, display:"flex", alignItems: isMobile ? "flex-end" : "flex-start", justifyContent:"center", padding: isMobile ? "0" : "12px 8px", overflowY: isMobile ? "hidden" : "auto" }}>
+      <div onClick={e=>e.stopPropagation()} style={{ background:`linear-gradient(160deg,${C.card},${C.card2})`, border:`1px solid ${C.border}`, borderLeft: isMobile ? "none" : `5px solid ${genres.length?genreColor(genres[0]):C.dim}`, borderTop: isMobile ? `4px solid ${genres.length?genreColor(genres[0]):C.dim}` : "none", borderRadius: isMobile ? "16px 16px 0 0" : 6, maxWidth: isMobile ? "100%" : 560, width:"100%", boxShadow:"0 20px 60px #00000099", overflowY:"auto", maxHeight: isMobile ? "92dvh" : "none", paddingBottom: isMobile ? "env(safe-area-inset-bottom)" : 0 }}>
 
+        {isMobile && <div style={{ width:36, height:4, background:"#3d2f5e", borderRadius:2, margin:"10px auto 4px" }} />}
         {book.cover_url && <img src={book.cover_url} alt={book.title} style={{ width:"100%", maxHeight:240, objectFit:"cover", objectPosition:"top" }} />}
 
         <div style={{ padding:"28px 24px", display:"flex", flexDirection:"column", gap:14 }}>
@@ -259,7 +278,7 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
             <>
               <div style={{ background:C.vdark, border:`1px solid ${C.border}`, borderRadius:4, padding:"16px 18px" }}>
                 <div style={{ fontFamily:"monospace", fontSize:11, color:C.accent, marginBottom:8, letterSpacing:1 }}>MY REVIEW</div>
-                <StarRating value={myRating} onChange={setMyRating} size={22} />
+                <StarRating value={myRating} onChange={setMyRating} size={isMobile ? 32 : 22} />
                 <textarea value={myNotes} onChange={e=>setMyNotes(e.target.value)} placeholder="Your thoughts…" rows={3}
                   style={{ width:"100%", marginTop:10, background:C.bg, border:`1px solid ${C.border}`, borderRadius:3, color:C.text, fontFamily:"'EB Garamond',serif", fontSize:15, padding:"8px 12px", outline:"none", resize:"vertical", boxSizing:"border-box" }} />
                 <div style={{ display:"flex", gap:8, marginTop:10 }}>
@@ -396,6 +415,11 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
             )}
           </div>
         </div>
+        {progressToast && (
+          <div style={{ position:"sticky", bottom: 0, left:0, right:0, background:C.accent2, color:C.bg, fontFamily:"'EB Garamond',serif", fontSize:15, fontWeight:700, textAlign:"center", padding:"12px", borderRadius: isMobile ? "0 0 16px 16px" : 0, animation:"fadein 0.15s ease" }}>
+            {progressToast}
+          </div>
+        )}
       </div>
     </div>
   );
