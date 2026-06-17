@@ -101,6 +101,21 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
     return () => window.removeEventListener("keydown", h);
   }, [onClose]);
 
+  // Mobile back button — push a history entry when modal opens so the back
+  // button closes the modal instead of exiting the site/PWA
+  useEffect(() => {
+    window.history.pushState({ modal: true }, "");
+    const handlePop = () => onClose();
+    window.addEventListener("popstate", handlePop);
+    return () => {
+      window.removeEventListener("popstate", handlePop);
+      // If closed via button/Escape (not back button), pop the entry we pushed
+      if (window.history.state?.modal) {
+        window.history.back();
+      }
+    };
+  }, []);
+
   useEffect(() => {
     const myReview = reviews.find(r => r.member_id === user?.id);
     if (myReview) { setMyRating(myReview.rating); setMyNotes(myReview.notes||""); }

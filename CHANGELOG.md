@@ -33,6 +33,12 @@ All notable changes to The Spicy Shelf are documented here.
 
 ---
 
+## [3.4.1] — 2026-06-17
+
+### Fixed
+- **Mobile back button closes modal** — opening a book card now pushes a history entry so tapping back closes the modal instead of exiting the site/PWA.
+- **Reading Now tab syncs on progress change** — updating your reading status or page count now instantly refreshes the Reading Now tab without needing a full page reload.
+
 ## [3.4.0] — 2026-05-26
 
 ### Added

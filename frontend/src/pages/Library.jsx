@@ -1007,10 +1007,16 @@ export default function Library() {
           onBookUpdated={b=>{setBooks(prev=>prev.map(x=>x.id===b.id?b:x));setSelected(b);}}
           onBookDeleted={id=>{setBooks(prev=>prev.filter(x=>x.id!==id));setSelected(null);api.deleteBook(id);}}
           onReviewSaved={(bookId, fresh) => setReviews(prev => ({ ...prev, [bookId]: fresh }))}
-          onProgressSaved={saved => setProgress(prev => {
-            const next = prev.filter(p => !(p.book_id === saved.book_id && p.member_id === saved.member_id));
-            return [...next, saved];
-          })}
+          onProgressSaved={async (saved) => {
+            setProgress(prev => {
+              const next = prev.filter(p => !(p.book_id === saved.book_id && p.member_id === saved.member_id));
+              return [...next, saved];
+            });
+            try {
+              const rn = await api.getReadingNow();
+              setReadingNow(rn);
+            } catch (e) { console.error(e); }
+          }}
         />
       )}
 
