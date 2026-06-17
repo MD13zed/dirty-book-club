@@ -970,6 +970,7 @@ export default function Library() {
                 <button onClick={closeForm} style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:3, color:C.dim, fontFamily:"monospace", fontSize:12, padding:"8px 14px", cursor:"pointer" }}>Cancel</button>
               </div>
             </div>
+          </div>
           )}
 
           {showForm && !isMobile && (
