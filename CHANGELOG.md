@@ -4,6 +4,20 @@ All notable changes to The Spicy Shelf are documented here.
 
 ---
 
+## [3.5.2] — 2026-06-18
+
+### Fixed
+- **Search-to-prefill now works on mobile** — tapping a result in the "Search to pre-fill" dropdown when adding a book had no effect on phones (worked on desktop). The dropdown rows fired on touch-end, which on the mobile bottom sheet was lost to the soft-keyboard dismissal reflowing the layout out from under your finger (and to scroll-claim turning the tap into a `touchcancel`). Rows now select on `pointerdown` (press-down, before any reflow), unifying mouse + touch and matching the behaviour desktop already had. Added `touch-action: manipulation` on rows to suppress tap delay/double-tap zoom.
+- **Mobile dropdown no longer clipped** — the add-book bottom sheet is an `overflow:auto` scroll container, which clips absolutely-positioned children; the results dropdown could render off the tappable area. On mobile the dropdown now renders inline (in normal flow, no nested scroll container) so it can't be clipped and can't swallow the tap. Desktop keeps the floating overlay.
+
+### Changed
+- **Service worker cache bumped** `spicy-shelf-v4` → `v5` so installed PWAs / phones evict the stale JS bundle and pick up the fixes on next load.
+
+### Diagnostics (temporary)
+- Added a `SEARCH_DEBUG` flag (top of `frontend/src/pages/Library.jsx`, currently `true`) that shows a live readout under the prefill field — `loading`, `results` count, `show`, `err` — so the search state is visible on the phone. Set to `false` (or remove) once mobile prefill is confirmed working.
+
+---
+
 ## [3.5.1] — 2026-06-17
 
 ### Added

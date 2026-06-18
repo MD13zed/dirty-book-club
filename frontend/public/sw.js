@@ -1,4 +1,4 @@
-const CACHE     = "spicy-shelf-v4";
+const CACHE     = "spicy-shelf-v5";
 const OFFLINE   = "/offline.html";
 
 // App shell — files to cache on install

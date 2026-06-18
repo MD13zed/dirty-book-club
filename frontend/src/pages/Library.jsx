@@ -6,6 +6,10 @@ import BookCard from "../components/BookCard";
 import BookModal from "../components/BookModal";
 import { GenrePicker, GENRES, genreColor, TwPicker, Avatar } from "../components/ui";
 
+// TEMP: flip to false (or delete) once mobile prefill is confirmed working.
+// Shows a live readout of the search state under the prefill field.
+const SEARCH_DEBUG = true;
+
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
   useEffect(() => {
@@ -386,10 +390,16 @@ function CsvImportModal({ C, onClose, onImported, existingBooks }) {
 // Rendered via portal so no parent overflow/stacking context can clip it.
 // Defined outside Library so it has a stable identity across re-renders.
 // Simple inline dropdown — no portal, no refs, works on all platforms
-function SearchDropdown({ results, onPick, C }) {
+function SearchDropdown({ results, onPick, C, inline = false }) {
   if (!results.length) return null;
+  // inline (mobile): render in normal flow so the bottom sheet's overflow:auto
+  // can't clip it, and there's no nested scroll container to swallow the tap.
+  // overlay (desktop): absolute dropdown that floats over the fields.
+  const wrapStyle = inline
+    ? { position:"relative", marginTop:6, background:C.card, border:`1px solid ${C.border}`, borderRadius:4, boxShadow:"0 8px 24px #0008", overflow:"hidden" }
+    : { position:"absolute", top:"100%", left:0, right:0, background:C.card, border:`1px solid ${C.border}`, borderRadius:4, zIndex:200, boxShadow:"0 8px 24px #0008", overflow:"hidden", maxHeight:280, overflowY:"auto" };
   return (
-    <div style={{ position:"absolute", top:"100%", left:0, right:0, background:C.card, border:`1px solid ${C.border}`, borderRadius:4, zIndex:200, boxShadow:"0 8px 24px #0008", overflow:"hidden", maxHeight:280, overflowY:"auto" }}>
+    <div style={wrapStyle}>
       {results.map((r, i) => (
         <div key={i}
           onPointerDown={e => { e.preventDefault(); onPick(r); }}
@@ -886,7 +896,12 @@ export default function Library() {
                 {searchError && (
                   <div style={{ fontFamily:"monospace", fontSize:11, color:"#c04040", marginTop:4 }}>⚠ {searchError}</div>
                 )}
-                {showResults && <SearchDropdown results={searchResults} onPick={pickSearchResult} C={C} />}
+                {SEARCH_DEBUG && (
+                  <div style={{ fontFamily:"monospace", fontSize:10, color:C.dimmer, marginTop:4, wordBreak:"break-all" }}>
+                    dbg · loading={String(searchLoading)} · results={searchResults.length} · show={String(showResults)} · err={searchError || "—"}
+                  </div>
+                )}
+                {showResults && <SearchDropdown results={searchResults} onPick={pickSearchResult} C={C} inline />}
               </div>
 
               {/* Manual fields */}
@@ -958,6 +973,11 @@ export default function Library() {
                 </div>
                 {searchError && (
                   <div style={{ fontFamily:"monospace", fontSize:11, color:"#c04040", marginTop:4 }}>⚠ {searchError}</div>
+                )}
+                {SEARCH_DEBUG && (
+                  <div style={{ fontFamily:"monospace", fontSize:10, color:C.dimmer, marginTop:4, wordBreak:"break-all" }}>
+                    dbg · loading={String(searchLoading)} · results={searchResults.length} · show={String(showResults)} · err={searchError || "—"}
+                  </div>
                 )}
                 {showResults && <SearchDropdown results={searchResults} onPick={pickSearchResult} C={C} />}
               </div>
