@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useTheme, useAuth } from "../App";
 import { api } from "../api";
@@ -57,7 +56,7 @@ async function searchOpenLibrary(query) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000); // 8s timeout
   try {
-    const res = await fetch(url, { signal: controller.signal, cache: "no-store" });
+    const res = await fetch(url, { signal: controller.signal });
     clearTimeout(timeout);
     if (!res.ok) return [];
     const data = await res.json();
@@ -386,51 +385,32 @@ function CsvImportModal({ C, onClose, onImported, existingBooks }) {
 // ── Main Library component ─────────────────────────────────────────────────
 // Rendered via portal so no parent overflow/stacking context can clip it.
 // Defined outside Library so it has a stable identity across re-renders.
-function SearchDropdown({ results, anchorEl, onPick, C }) {
-  if (!anchorEl) return null;
-  const rect = anchorEl.getBoundingClientRect();
-  return createPortal(
-    <div style={{
-      position:"fixed",
-      top: rect.bottom + 4,
-      left: rect.left,
-      width: rect.width,
-      background:C.card,
-      border:`1px solid ${C.border}`,
-      borderRadius:4,
-      zIndex:9999,
-      boxShadow:"0 8px 24px #0008",
-      overflow:"hidden",
-      maxHeight:320,
-      overflowY:"auto",
-    }}>
-      {results.length === 0
-        ? <div style={{ padding:"12px 16px", fontFamily:"monospace", fontSize:12, color:C.dimmer, textAlign:"center" }}>No results found</div>
-        : results.map((r, i) => (
-          <div key={i}
-            onMouseDown={e => { e.preventDefault(); onPick(r); }}
-            onTouchEnd={e => { e.preventDefault(); onPick(r); }}
-            style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderBottom: i < results.length-1 ? `1px solid ${C.border2}` : "none", cursor:"pointer", background:"transparent" }}
-            onTouchStart={e => { e.currentTarget.style.background = C.bg2; }}
-            onTouchCancel={e => { e.currentTarget.style.background = "transparent"; }}
-            onMouseEnter={e => { e.currentTarget.style.background = C.bg2; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
-            {r.cover_url
-              ? <img src={r.cover_url} alt="" style={{ width:28, height:40, objectFit:"cover", borderRadius:2, flexShrink:0 }} />
-              : <div style={{ width:28, height:40, background:C.border, borderRadius:2, flexShrink:0 }} />
-            }
-            <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ fontFamily:"'EB Garamond',serif", fontSize:14, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{r.title}</div>
-              <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer }}>{r.author}{r.total_pages ? ` · ${r.total_pages}pp` : ""}</div>
-            </div>
-            {r.alreadyInLibrary && (
-              <span style={{ fontFamily:"monospace", fontSize:10, color:C.accent2, border:`1px solid ${C.accent2}55`, borderRadius:3, padding:"2px 6px", flexShrink:0 }}>In library</span>
-            )}
+// Simple inline dropdown — no portal, no refs, works on all platforms
+function SearchDropdown({ results, onPick, C }) {
+  if (!results.length) return null;
+  return (
+    <div style={{ position:"absolute", top:"100%", left:0, right:0, background:C.card, border:`1px solid ${C.border}`, borderRadius:4, zIndex:200, boxShadow:"0 8px 24px #0008", overflow:"hidden", maxHeight:280, overflowY:"auto" }}>
+      {results.map((r, i) => (
+        <div key={i}
+          onMouseDown={e => { e.preventDefault(); onPick(r); }}
+          onTouchEnd={e => { e.preventDefault(); onPick(r); }}
+          style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderBottom: i < results.length-1 ? `1px solid ${C.border2}` : "none", cursor:"pointer", background:"transparent" }}
+          onMouseEnter={e => e.currentTarget.style.background = C.bg2}
+          onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+          {r.cover_url
+            ? <img src={r.cover_url} alt="" style={{ width:28, height:40, objectFit:"cover", borderRadius:2, flexShrink:0 }} />
+            : <div style={{ width:28, height:40, background:C.border, borderRadius:2, flexShrink:0 }} />
+          }
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontFamily:"'EB Garamond',serif", fontSize:14, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{r.title}</div>
+            <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer }}>{r.author}{r.total_pages ? ` · ${r.total_pages}pp` : ""}</div>
           </div>
-        ))
-      }
-    </div>,
-    document.body
+          {r.alreadyInLibrary && (
+            <span style={{ fontFamily:"monospace", fontSize:10, color:C.accent2, border:`1px solid ${C.accent2}55`, borderRadius:3, padding:"2px 6px", flexShrink:0 }}>In library</span>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -469,25 +449,8 @@ export default function Library() {
   const [searchResults,  setSearchResults]  = useState([]);
   const [searchLoading,  setSearchLoading]  = useState(false);
   const [showResults,    setShowResults]    = useState(false);
-  const [searchError, setSearchError] = useState("");
+  const [searchError,    setSearchError]    = useState("");
   const searchDebounce = useRef(null);
-  const searchInputRef = useRef(null);
-  const searchWrapRef  = useRef(null);
-
-  // Close dropdown when tapping outside the search area
-  useEffect(() => {
-    const handler = (e) => {
-      if (searchWrapRef.current && !searchWrapRef.current.contains(e.target)) {
-        setShowResults(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    document.addEventListener("touchstart", handler);
-    return () => {
-      document.removeEventListener("mousedown", handler);
-      document.removeEventListener("touchstart", handler);
-    };
-  }, []);
 
   const INP = { width:"100%", background:C.bg, border:`1px solid ${C.border}`, borderRadius:3, color:C.text, fontFamily:"'EB Garamond',serif", fontSize:15, padding:"7px 11px", outline:"none", boxSizing:"border-box" };
 
@@ -906,13 +869,13 @@ export default function Library() {
                 <div style={{ fontFamily:"'Playfair Display',serif", fontSize:17, marginBottom:14, color:C.accent, fontStyle:"italic" }}>Add a Book to the Club</div>
 
               {/* ── Open Library search ── */}
-              <div ref={searchWrapRef} style={{ marginBottom:18, position:"relative" }}>
+              <div style={{ marginBottom:18, position:"relative" }}>
                 <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.accent2, marginBottom:4 }}>🔍 SEARCH TO PRE-FILL</label>
                 <div style={{ position:"relative" }}>
                   <input
-                    ref={searchInputRef}
                     value={bookQuery}
                     onChange={e => handleBookQueryChange(e.target.value)}
+                    onBlur={() => setTimeout(() => setShowResults(false), 200)}
                     onFocus={() => searchResults.length > 0 && setShowResults(true)}
                     placeholder="Type a title or author to look up details…"
                     style={{ ...INP, paddingRight: searchLoading ? 36 : 11 }}
@@ -924,7 +887,7 @@ export default function Library() {
                 {searchError && (
                   <div style={{ fontFamily:"monospace", fontSize:11, color:"#c04040", marginTop:4 }}>⚠ {searchError}</div>
                 )}
-                {showResults && <SearchDropdown results={searchResults} anchorEl={searchInputRef.current} onPick={pickSearchResult} C={C} />}
+                {showResults && <SearchDropdown results={searchResults} onPick={pickSearchResult} C={C} />}
               </div>
 
               {/* Manual fields */}
@@ -979,13 +942,13 @@ export default function Library() {
               <div style={{ fontFamily:"'Playfair Display',serif", fontSize:17, marginBottom:14, color:C.accent, fontStyle:"italic" }}>Add a Book to the Club</div>
 
               {/* ── Open Library search ── */}
-              <div ref={searchWrapRef} style={{ marginBottom:18, position:"relative" }}>
+              <div style={{ marginBottom:18, position:"relative" }}>
                 <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.accent2, marginBottom:4 }}>🔍 SEARCH TO PRE-FILL</label>
                 <div style={{ position:"relative" }}>
                   <input
-                    ref={searchInputRef}
                     value={bookQuery}
                     onChange={e => handleBookQueryChange(e.target.value)}
+                    onBlur={() => setTimeout(() => setShowResults(false), 200)}
                     onFocus={() => searchResults.length > 0 && setShowResults(true)}
                     placeholder="Type a title or author to look up details…"
                     style={{ ...INP, paddingRight: searchLoading ? 36 : 11 }}
@@ -997,7 +960,7 @@ export default function Library() {
                 {searchError && (
                   <div style={{ fontFamily:"monospace", fontSize:11, color:"#c04040", marginTop:4 }}>⚠ {searchError}</div>
                 )}
-                {showResults && <SearchDropdown results={searchResults} anchorEl={searchInputRef.current} onPick={pickSearchResult} C={C} />}
+                {showResults && <SearchDropdown results={searchResults} onPick={pickSearchResult} C={C} />}
               </div>
 
               {/* Manual fields */}
