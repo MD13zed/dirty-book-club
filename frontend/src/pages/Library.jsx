@@ -71,63 +71,11 @@ async function searchOpenLibrary(query) {
 // ── Google Books search ────────────────────────────────────────────────────
 // Covers indie/self-published titles much better than Open Library.
 // No API key needed for basic search queries.
-async function searchGoogleBooks(query) {
-  if (!query || query.length < 3) return [];
-  const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=6`;
-  const res = await fetch(url);
-  if (res.status === 429 || res.status === 403) return []; // rate limited — silently skip
-  if (!res.ok) return [];
-  const data = await res.json();
-  return (data.items || []).map(item => {
-    const info = item.volumeInfo || {};
-    const series = info.subtitle && /book\s*\d|#\d|series|duet|trilogy/i.test(info.subtitle)
-      ? info.subtitle
-      : "";
-    return {
-      title:       info.title || "",
-      author:      (info.authors || [])[0] || "",
-      cover_url:   info.imageLinks?.thumbnail?.replace("http://", "https://") || "",
-      total_pages: info.pageCount || "",
-      isbn:        (info.industryIdentifiers || []).find(id => id.type === "ISBN_13")?.identifier
-                 || (info.industryIdentifiers || []).find(id => id.type === "ISBN_10")?.identifier
-                 || "",
-      series,
-      subjects:    info.categories || [],
-      source:      "googlebooks",
-    };
-  });
-}
-
-// ── Merge & dedupe search results ──────────────────────────────────────────
-// Combines results from multiple sources, removing entries that represent
-// the same book (matched on normalized core title + author, with any
-// series/edition info stripped from the title first). Open Library results
-// are kept over Google Books duplicates when both exist, since Open Library
-// covers tend to be slightly higher quality — but Google Books-only hits
-// (common for indie/self-published books) are always included.
+// ── normalizeKey for dedup ─────────────────────────────────────────────────
 function normalizeKey(title, author) {
   const norm = s => (s || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
   const { title: coreTitle } = stripSeriesFromTitle(title);
   return `${norm(coreTitle)}|${norm(author)}`;
-}
-
-function mergeSearchResults(openLibraryResults, googleBooksResults, limit = 8) {
-  const merged = [];
-  const seen   = new Set();
-
-  for (const r of openLibraryResults) {
-    const key = normalizeKey(r.title, r.author);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    merged.push(r);
-  }
-  for (const r of googleBooksResults) {
-    const key = normalizeKey(r.title, r.author);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    merged.push(r);
-  }
-  return merged.slice(0, limit);
 }
 
 // ── Goodreads CSV parser ───────────────────────────────────────────────────
@@ -552,20 +500,11 @@ export default function Library() {
     searchDebounce.current = setTimeout(async () => {
       setSearchLoading(true);
       try {
-        const [olResults, gbResults] = await Promise.all([
-          searchOpenLibrary(val).catch(() => []),
-          searchGoogleBooks(val).catch(() => []),  // 429s caught here, returns []
-        ]);
-        const merged = mergeSearchResults(olResults, gbResults);
+        const olResults = await searchOpenLibrary(val).catch(() => []);
 
-        // Flag results that match a book already in the library.
-        // Match on normalized title+author first (handles subtitle/edition
-        // differences like "Twisted Trails" vs "Twisted Trails (Rogue Riders
-        // Duet Book 2)"); fall back to title-only in case author is missing
-        // on either side.
         const existingByTitleAuthor = new Set(books.map(b => normalizeKey(b.title, b.author)));
         const existingByTitleOnly   = new Set(books.map(b => normalizeKey(b.title, "")));
-        const flagged = merged.map(r => ({
+        const flagged = olResults.slice(0, 8).map(r => ({
           ...r,
           alreadyInLibrary:
             existingByTitleAuthor.has(normalizeKey(r.title, r.author)) ||
