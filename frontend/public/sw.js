@@ -1,4 +1,4 @@
-const CACHE     = "spicy-shelf-v3";
+const CACHE     = "spicy-shelf-v4";
 const OFFLINE   = "/offline.html";
 
 // App shell — files to cache on install
@@ -28,11 +28,19 @@ self.addEventListener("activate", e => {
   );
 });
 
-// ── Fetch — network first for API, cache first for assets ────────────────────
+// ── Fetch ─────────────────────────────────────────────────────────────────────
 self.addEventListener("fetch", e => {
   const url = new URL(e.request.url);
 
-  // Always go network-first for API calls — never serve stale data
+  // Skip non-http(s) requests entirely (chrome-extension://, etc.)
+  if (!url.protocol.startsWith("http")) return;
+
+  // Skip cross-origin requests — let them go straight to the network.
+  // This covers external API calls like openlibrary.org so they are
+  // never served from cache and always return fresh results.
+  if (url.origin !== self.location.origin) return;
+
+  // Network-first for our own API/auth routes
   if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/auth/")) {
     e.respondWith(
       fetch(e.request).catch(() =>
@@ -45,7 +53,7 @@ self.addEventListener("fetch", e => {
     return;
   }
 
-  // For navigation requests (page loads) — network first, fall back to cache, then offline page
+  // Network-first for navigation (page loads), fall back to cache then offline
   if (e.request.mode === "navigate") {
     e.respondWith(
       fetch(e.request)
@@ -62,7 +70,7 @@ self.addEventListener("fetch", e => {
     return;
   }
 
-  // For static assets (JS, CSS, fonts, images) — cache first, then network
+  // Cache-first for same-origin static assets (JS, CSS, images, fonts)
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;

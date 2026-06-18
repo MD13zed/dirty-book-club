@@ -378,7 +378,7 @@ function CsvImportModal({ C, onClose, onImported, existingBooks }) {
 // Rendered via portal so no parent overflow/stacking context can clip it.
 // Defined outside Library so it has a stable identity across re-renders.
 function SearchDropdown({ results, anchorEl, onPick, C }) {
-  if (!results.length || !anchorEl) return null;
+  if (!anchorEl) return null;
   const rect = anchorEl.getBoundingClientRect();
   return createPortal(
     <div style={{
@@ -395,28 +395,31 @@ function SearchDropdown({ results, anchorEl, onPick, C }) {
       maxHeight:320,
       overflowY:"auto",
     }}>
-      {results.map((r, i) => (
-        <div key={i}
-          onMouseDown={e => { e.preventDefault(); onPick(r); }}
-          onTouchEnd={e => { e.preventDefault(); onPick(r); }}
-          style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderBottom: i < results.length-1 ? `1px solid ${C.border2}` : "none", cursor:"pointer", background:"transparent" }}
-          onTouchStart={e => { e.currentTarget.style.background = C.bg2; }}
-          onTouchCancel={e => { e.currentTarget.style.background = "transparent"; }}
-          onMouseEnter={e => { e.currentTarget.style.background = C.bg2; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
-          {r.cover_url
-            ? <img src={r.cover_url} alt="" style={{ width:28, height:40, objectFit:"cover", borderRadius:2, flexShrink:0 }} />
-            : <div style={{ width:28, height:40, background:C.border, borderRadius:2, flexShrink:0 }} />
-          }
-          <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ fontFamily:"'EB Garamond',serif", fontSize:14, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{r.title}</div>
-            <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer }}>{r.author}{r.total_pages ? ` · ${r.total_pages}pp` : ""}</div>
+      {results.length === 0
+        ? <div style={{ padding:"12px 16px", fontFamily:"monospace", fontSize:12, color:C.dimmer, textAlign:"center" }}>No results found</div>
+        : results.map((r, i) => (
+          <div key={i}
+            onMouseDown={e => { e.preventDefault(); onPick(r); }}
+            onTouchEnd={e => { e.preventDefault(); onPick(r); }}
+            style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderBottom: i < results.length-1 ? `1px solid ${C.border2}` : "none", cursor:"pointer", background:"transparent" }}
+            onTouchStart={e => { e.currentTarget.style.background = C.bg2; }}
+            onTouchCancel={e => { e.currentTarget.style.background = "transparent"; }}
+            onMouseEnter={e => { e.currentTarget.style.background = C.bg2; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
+            {r.cover_url
+              ? <img src={r.cover_url} alt="" style={{ width:28, height:40, objectFit:"cover", borderRadius:2, flexShrink:0 }} />
+              : <div style={{ width:28, height:40, background:C.border, borderRadius:2, flexShrink:0 }} />
+            }
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontFamily:"'EB Garamond',serif", fontSize:14, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{r.title}</div>
+              <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer }}>{r.author}{r.total_pages ? ` · ${r.total_pages}pp` : ""}</div>
+            </div>
+            {r.alreadyInLibrary && (
+              <span style={{ fontFamily:"monospace", fontSize:10, color:C.accent2, border:`1px solid ${C.accent2}55`, borderRadius:3, padding:"2px 6px", flexShrink:0 }}>In library</span>
+            )}
           </div>
-          {r.alreadyInLibrary && (
-            <span style={{ fontFamily:"monospace", fontSize:10, color:C.accent2, border:`1px solid ${C.accent2}55`, borderRadius:3, padding:"2px 6px", flexShrink:0 }}>In library</span>
-          )}
-        </div>
-      ))}
+        ))
+      }
     </div>,
     document.body
   );
