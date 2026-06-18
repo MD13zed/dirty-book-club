@@ -462,6 +462,8 @@ export default function Library() {
   const [searchLoading,  setSearchLoading]  = useState(false);
   const [showResults,    setShowResults]    = useState(false);
   const [searchError, setSearchError] = useState("");
+  const searchDebounce = useRef(null);
+  const searchInputRef = useRef(null);
 
   // On mobile, use position:fixed so dropdown isn't clipped by overflow:auto sheet
   const getDropdownStyle = () => {
