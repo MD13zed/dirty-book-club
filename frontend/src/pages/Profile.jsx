@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTheme, useAuth } from "../App";
-import { api } from "../api";
+import { api, coverSrc } from "../api";
 import { StarRating, Avatar, ProgressBar, STATUS_LABELS, STATUS_COLORS } from "../components/ui";
 import { THEMES } from "../theme";
 
@@ -198,7 +198,7 @@ export default function Profile() {
           <div style={{ display:"grid", gap:10 }}>
             {filteredReviews.slice(0,20).map(r => (
               <div key={r.id} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:6, padding:"14px 16px", display:"flex", gap:14, alignItems:"flex-start" }}>
-                {r.cover_url && <img src={r.cover_url} alt="" style={{ width:40, height:56, objectFit:"cover", borderRadius:3, flexShrink:0 }} />}
+                {r.cover_url && <img src={coverSrc(r.cover_url)} alt="" style={{ width:40, height:56, objectFit:"cover", borderRadius:3, flexShrink:0 }} />}
                 <div style={{ flex:1 }}>
                   <div style={{ fontFamily:"'Playfair Display',serif", fontSize:15, color:C.text, fontWeight:700 }}>{r.book_title}</div>
                   <div style={{ fontFamily:"'EB Garamond',serif", fontSize:13, color:C.muted, fontStyle:"italic", marginBottom:4 }}>{r.book_author}</div>

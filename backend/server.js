@@ -18,7 +18,7 @@ app.use(
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-app.use("/api", rateLimit({ windowMs: 15*60*1000, max: 300, standardHeaders: true, legacyHeaders: false }));
+app.use("/api", rateLimit({ windowMs: 15*60*1000, max: 300, standardHeaders: true, legacyHeaders: false, skip: (req) => req.originalUrl.includes("/booksearch/cover") }));
 app.use("/auth", rateLimit({ windowMs: 15*60*1000, max: 20, standardHeaders: true, legacyHeaders: false }));
 
 app.use("/auth",              require("./routes/auth"));
@@ -28,6 +28,7 @@ app.use("/api/progress",      require("./routes/progress"));
 app.use("/api/members",       require("./routes/members"));
 app.use("/api/admin",         require("./routes/admin"));
 app.use("/api/uploads",       require("./routes/uploads"));
+app.use("/api/booksearch",    require("./routes/booksearch"));
 app.use("/api/nominations",   require("./routes/nominations"));
 app.use("/api/reading-now",   require("./routes/reading-now"));
 app.use("/api/digest",        require("./routes/digest"));

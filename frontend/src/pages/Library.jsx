@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme, useAuth } from "../App";
-import { api } from "../api";
+import { api, coverSrc } from "../api";
 import BookCard from "../components/BookCard";
 import BookModal from "../components/BookModal";
 import { GenrePicker, GENRES, genreColor, TwPicker, Avatar } from "../components/ui";
@@ -56,26 +56,13 @@ const SORTS = [
 // ── Open Library search ────────────────────────────────────────────────────
 async function searchOpenLibrary(query, onMeta) {
   if (!query || query.length < 3) { onMeta?.("skip<3"); return []; }
-  const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=6&fields=key,title,author_name,cover_i,number_of_pages_median,first_publish_year,isbn,subject,series`;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000); // 8s timeout
   try {
-    const res = await fetch(url, { signal: controller.signal });
+    const results = await api.searchBooks(query, controller.signal);
     clearTimeout(timeout);
-    if (!res.ok) { onMeta?.(`HTTP${res.status}`); return []; }
-    const data = await res.json();
-    const docs = data.docs || [];
-    onMeta?.(`ok:${docs.length}`);
-    return docs.map(d => ({
-      title:       d.title,
-      author:      (d.author_name || [])[0] || "",
-      cover_url:   d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : "",
-      total_pages: d.number_of_pages_median || "",
-      isbn:        (d.isbn || [])[0] || "",
-      series:      (d.series || [])[0] || "",
-      subjects:    d.subject || [],
-      source:      "openlibrary",
-    }));
+    onMeta?.(`ok:${results.length}`);
+    return results;
   } catch (e) {
     clearTimeout(timeout);
     onMeta?.(`threw:${e?.name || "Err"}`);
@@ -410,7 +397,7 @@ function SearchDropdown({ results, onPick, C, inline = false }) {
           onMouseEnter={e => e.currentTarget.style.background = C.bg2}
           onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
           {r.cover_url
-            ? <img src={r.cover_url} alt="" style={{ width:28, height:40, objectFit:"cover", borderRadius:2, flexShrink:0 }} />
+            ? <img src={coverSrc(r.cover_url)} alt="" style={{ width:28, height:40, objectFit:"cover", borderRadius:2, flexShrink:0 }} />
             : <div style={{ width:28, height:40, background:C.border, borderRadius:2, flexShrink:0 }} />
           }
           <div style={{ flex:1, minWidth:0 }}>
@@ -658,7 +645,7 @@ export default function Library() {
           <div style={{ display:"flex", flexDirection:"column", gap: isMobile ? 8 : 12 }}>
             {[...noms].sort((a,b) => (b.vote_count||0) - (a.vote_count||0)).map(n => (
               <div key={n.id} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:6, padding: isMobile ? "12px" : "16px 18px", display:"flex", gap: isMobile ? 10 : 14, alignItems:"center" }}>
-                {n.cover_url && <img src={n.cover_url} alt={n.title} style={{ width: isMobile ? 36 : 44, height: isMobile ? 50 : 62, objectFit:"cover", borderRadius:3, flexShrink:0 }} />}
+                {n.cover_url && <img src={coverSrc(n.cover_url)} alt={n.title} style={{ width: isMobile ? 36 : 44, height: isMobile ? 50 : 62, objectFit:"cover", borderRadius:3, flexShrink:0 }} />}
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontFamily:"'Playfair Display',serif", fontSize: isMobile ? 14 : 16, color:C.text, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{n.title}</div>
                   {n.author && <div style={{ fontFamily:"'EB Garamond',serif", fontSize:13, color:C.muted, fontStyle:"italic" }}>by {n.author}</div>}
@@ -713,7 +700,7 @@ export default function Library() {
                     {/* Book area — opens modal */}
                     <div onClick={() => book && setSelected(book)} style={{ display:"flex", gap:12, alignItems:"center", flex:1, minWidth:0, cursor:"pointer" }}>
                       {r.cover_url
-                        ? <img src={r.cover_url} alt={r.title} style={{ width:44, height:62, objectFit:"cover", borderRadius:3, flexShrink:0 }} />
+                        ? <img src={coverSrc(r.cover_url)} alt={r.title} style={{ width:44, height:62, objectFit:"cover", borderRadius:3, flexShrink:0 }} />
                         : <div style={{ width:44, height:62, background:C.border, borderRadius:3, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>📚</div>
                       }
                       <div style={{ flex:1, minWidth:0 }}>
@@ -768,7 +755,7 @@ export default function Library() {
                   <div key={book.id} onClick={() => setSelected(book)}
                     style={{ background:C.card, border:`1px solid ${C.border}`, borderLeft:`4px solid #ffd700`, borderRadius:6, padding:"14px 16px", display:"flex", gap:12, alignItems:"center", cursor:"pointer" }}>
                     {book.cover_url
-                      ? <img src={book.cover_url} alt={book.title} style={{ width:44, height:62, objectFit:"cover", borderRadius:3, flexShrink:0 }} />
+                      ? <img src={coverSrc(book.cover_url)} alt={book.title} style={{ width:44, height:62, objectFit:"cover", borderRadius:3, flexShrink:0 }} />
                       : <div style={{ width:44, height:62, background:C.border, borderRadius:3, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>📚</div>
                     }
                     <div style={{ flex:1, minWidth:0 }}>

@@ -78,6 +78,13 @@ export const api = {
   setBookOfTheMonth: (book_id, month, announce = true) => req("POST", "/admin/botm", { book_id, month, announce }),
   postTbrPoll:       (book_ids, duration_hours) => req("POST", "/admin/tbr-poll", { book_ids, duration_hours }),
 
+  // Book search (proxied through our backend so clients never hit Open Library directly)
+  searchBooks: async (q, signal) => {
+    const res = await fetch(`${BASE_URL}/api/booksearch?q=${encodeURIComponent(q)}`, { headers: headers(), signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  },
+
   // Upload
   uploadCover: async (file) => {
     const fd = new FormData();
@@ -91,4 +98,14 @@ export const api = {
     if (!res.ok) throw new Error(data.error);
     return data;
   },
+};
+
+// Rewrites cover URLs that point at Open Library (unreachable on some networks)
+// to go through our own cover proxy. Cloudinary / other URLs pass through as-is.
+export const coverSrc = (url) => {
+  if (!url) return "";
+  if (url.includes("openlibrary.org")) {
+    return `${BASE_URL}/api/booksearch/cover?u=${encodeURIComponent(url)}`;
+  }
+  return url;
 };

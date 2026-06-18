@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTheme } from "../App";
 import { StarRating, Avatar, genreColor, ProgressBar, STATUS_COLORS } from "./ui";
+import { coverSrc } from "../api";
 
 function fmtDate(d) {
   if (!d) return null;
@@ -57,7 +58,7 @@ export default function BookCard({ book, reviews = [], myProgress, currentUser, 
       {/* Fixed-height cover area — same for every card */}
       <div onClick={() => onClick(book)} style={{ position:"relative", width:"100%", height:COVER_H, flexShrink:0, overflow:"hidden" }}>
         {book.cover_url
-          ? <img src={book.cover_url} alt={book.title} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+          ? <img src={coverSrc(book.cover_url)} alt={book.title} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
           : <div style={{ width:"100%", height:"100%", background:`linear-gradient(160deg,${mainColor}33,${mainColor}11)`, display:"flex", alignItems:"center", justifyContent:"center" }}>
               <span style={{ fontFamily:"'Playfair Display',serif", fontSize:13, color:mainColor, opacity:0.6, textAlign:"center", padding:"0 16px", lineHeight:1.4 }}>{book.title}</span>
             </div>
