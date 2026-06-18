@@ -3,8 +3,19 @@ import { useTheme } from "../App";
 import { api } from "../api";
 import { Avatar } from "../components/ui";
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
+  return isMobile;
+}
+
 export default function Admin() {
   const { C } = useTheme();
+  const isMobile = useIsMobile();
   const [stats,   setStats]   = useState(null);
   const [members, setMembers] = useState([]);
   const [books,   setBooks]   = useState([]);
@@ -71,8 +82,12 @@ export default function Admin() {
   };
 
   const tabStyle = (t) => ({
-    fontFamily:"monospace", fontSize:12, padding:"8px 16px", cursor:"pointer", border:"none",
-    background:tab===t?C.accent2:"transparent", color:tab===t?C.bg:C.dim, borderRadius:4,
+    fontFamily:"monospace", fontSize:12, padding:"8px 14px 10px", cursor:"pointer", border:"none", flexShrink:0,
+    background:tab===t ? C.accent2+"22" : "transparent",
+    color:tab===t ? C.accent2 : C.dim,
+    borderBottom: tab===t ? `2px solid ${C.accent2}` : "2px solid transparent",
+    borderRadius:0,
+    whiteSpace:"nowrap",
   });
 
   const Stat = ({ label, value, color }) => (
@@ -83,21 +98,21 @@ export default function Admin() {
   );
 
   return (
-    <div style={{ maxWidth:900, margin:"0 auto", padding:"32px 24px" }}>
-      <div style={{ fontFamily:"'Playfair Display',serif", fontSize:26, fontWeight:900, color:C.accent, fontStyle:"italic", marginBottom:24 }}>Admin Dashboard</div>
+    <div style={{ maxWidth:900, margin:"0 auto", padding: isMobile ? "16px 12px" : "32px 24px" }}>
+      <div style={{ fontFamily:"'Playfair Display',serif", fontSize: isMobile ? 22 : 26, fontWeight:900, color:C.accent, fontStyle:"italic", marginBottom: isMobile ? 16 : 24 }}>Admin Dashboard</div>
 
-      <div style={{ display:"flex", gap:4, marginBottom:24, borderBottom:`1px solid ${C.border}`, paddingBottom:12, flexWrap:"wrap" }}>
+      <div style={{ display:"flex", gap:4, marginBottom: isMobile ? 16 : 24, borderBottom:`1px solid ${C.border}`, paddingBottom:0, overflowX: isMobile ? "auto" : "visible", flexWrap: isMobile ? "nowrap" : "wrap", scrollbarWidth:"none", WebkitOverflowScrolling:"touch" }}>
         <button style={tabStyle("stats")}    onClick={()=>setTab("stats")}>Stats</button>
-        <button style={tabStyle("members")}  onClick={()=>setTab("members")}>Members ({members.length})</button>
+        <button style={tabStyle("members")}  onClick={()=>setTab("members")}>{isMobile ? `Members` : `Members (${members.length})`}</button>
         <button style={tabStyle("activity")} onClick={()=>setTab("activity")}>Activity</button>
-        <button style={tabStyle("botm")}     onClick={()=>setTab("botm")}>📔 Book of the Month</button>
-        <button style={tabStyle("noms")}     onClick={()=>setTab("noms")}>🗳 Nominations ({noms.length})</button>
+        <button style={tabStyle("botm")}     onClick={()=>setTab("botm")}>{isMobile ? "📔 BOTM" : "📔 Book of the Month"}</button>
+        <button style={tabStyle("noms")}     onClick={()=>setTab("noms")}>{isMobile ? `🗳 Noms` : `🗳 Nominations (${noms.length})`}</button>
       </div>
 
       {/* ── STATS ── */}
       {tab==="stats" && stats && (
         <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))", gap:12 }}>
+          <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(auto-fill,minmax(150px,1fr))", gap:12 }}>
             <Stat label="Total Books"   value={stats.total_books} />
             <Stat label="Total Reviews" value={stats.total_reviews} color={C.accent2} />
             <Stat label="Members"       value={stats.total_members} color="#60a080" />
@@ -153,20 +168,22 @@ export default function Admin() {
       {tab==="members" && (
         <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
           {members.map(m => (
-            <div key={m.id} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:6, padding:"14px 18px", display:"flex", alignItems:"center", gap:14, flexWrap:"wrap" }}>
+            <div key={m.id} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:6, padding: isMobile ? "12px" : "14px 18px", display:"flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", gap: isMobile ? 10 : 14 }}>
               <div style={{ flex:1, minWidth:0, display:"flex", gap:12, alignItems:"center" }}>
                 <Avatar name={m.display_name||m.username} size={36} />
-                <div>
-                  <div style={{ fontFamily:"'Playfair Display',serif", fontSize:15, color:C.text }}>{m.display_name||m.username}</div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontFamily:"'Playfair Display',serif", fontSize:15, color:C.text, display:"flex", alignItems:"center", gap:8 }}>
+                    {m.display_name||m.username}
+                    {m.is_admin && <span style={{ fontFamily:"monospace", fontSize:10, color:C.accent, background:C.accent+"22", padding:"1px 6px", borderRadius:10 }}>✦ admin</span>}
+                  </div>
                   <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer }}>@{m.username} · {m.reviews} reviews · joined {new Date(m.joined_at).toLocaleDateString()}</div>
                 </div>
               </div>
               <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-                {m.is_admin && <span style={{ fontFamily:"monospace", fontSize:11, color:C.accent }}>✦ admin</span>}
-                <button onClick={()=>toggleAdmin(m.id,m.is_admin)} style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:3, color:C.dim, fontFamily:"monospace", fontSize:11, padding:"4px 10px", cursor:"pointer" }}>
+                <button onClick={()=>toggleAdmin(m.id,m.is_admin)} style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:4, color:C.dim, fontFamily:"monospace", fontSize:11, padding: isMobile ? "8px 0" : "4px 10px", cursor:"pointer", flex: isMobile ? 1 : "none" }}>
                   {m.is_admin?"Revoke admin":"Make admin"}
                 </button>
-                <button onClick={()=>removeMember(m.id)} style={{ background:"transparent", border:"1px solid #5a1a30", borderRadius:3, color:"#c05070", fontFamily:"monospace", fontSize:11, padding:"4px 10px", cursor:"pointer" }}>
+                <button onClick={()=>removeMember(m.id)} style={{ background:"transparent", border:"1px solid #5a1a30", borderRadius:4, color:"#c05070", fontFamily:"monospace", fontSize:11, padding: isMobile ? "8px 0" : "4px 10px", cursor:"pointer", flex: isMobile ? 1 : "none" }}>
                   Remove
                 </button>
               </div>
@@ -195,7 +212,7 @@ export default function Admin() {
       {/* ── BOTM ── */}
       {tab==="botm" && (
         <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
-          <div style={{ background:C.card, border:`1px solid #d4af3755`, borderRadius:6, padding:"24px 28px" }}>
+          <div style={{ background:C.card, border:`1px solid #d4af3755`, borderRadius:6, padding: isMobile ? "16px" : "24px 28px" }}>
             <div style={{ fontFamily:"monospace", fontSize:11, color:"#d4af37", letterSpacing:1, marginBottom:18 }}>SET BOOK OF THE MONTH</div>
             <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
               <div>
@@ -252,7 +269,7 @@ export default function Admin() {
       {/* ── NOMINATIONS ── */}
       {tab==="noms" && (
         <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
-          <div style={{ background:C.card, border:`1px solid ${C.accent2}44`, borderRadius:6, padding:"24px 28px" }}>
+          <div style={{ background:C.card, border:`1px solid ${C.accent2}44`, borderRadius:6, padding: isMobile ? "16px" : "24px 28px" }}>
             <div style={{ fontFamily:"monospace", fontSize:11, color:C.accent2, letterSpacing:1, marginBottom:6 }}>POST TBR POLL TO DISCORD</div>
             <div style={{ fontFamily:"'EB Garamond',serif", fontSize:14, color:C.dimmer, fontStyle:"italic", marginBottom:16 }}>
               Select books below to include in a Discord poll — members vote for what to read next.

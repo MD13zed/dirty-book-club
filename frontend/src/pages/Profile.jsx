@@ -16,7 +16,7 @@ function useIsMobile() {
 }
 
 // ── Progress card — DNF ones are tap-to-reveal ────────────────────────────────
-function DnfCard({ p, C }) {
+function DnfCard({ p, C, isMobile }) {
   const [open, setOpen] = useState(false);
   const isDnf = p.status === "dnf";
 
@@ -27,14 +27,14 @@ function DnfCard({ p, C }) {
         background: C.card,
         border: `1px solid ${isDnf ? "#90404055" : C.border}`,
         borderRadius: 6,
-        padding: "12px 16px",
+        padding: isMobile ? "10px 12px" : "12px 16px",
         cursor: isDnf && p.dnf_reason ? "pointer" : "default",
         transition: "border-color 0.15s",
       }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-        <div style={{ fontFamily:"'Playfair Display',serif", fontSize:14, color:C.text, flex:1, minWidth:0, marginRight:8 }}>{p.book_title}</div>
-        <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
-          <span style={{ fontFamily:"monospace", fontSize:11, color:STATUS_COLORS[p.status] }}>{STATUS_LABELS[p.status]}</span>
+        <div style={{ fontFamily:"'Playfair Display',serif", fontSize: isMobile ? 13 : 14, color:C.text, flex:1, minWidth:0, marginRight:8, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.book_title}</div>
+        <div style={{ display:"flex", alignItems:"center", gap:6, flexShrink:0 }}>
+          <span style={{ fontFamily:"monospace", fontSize:10, color:STATUS_COLORS[p.status], background:STATUS_COLORS[p.status]+"22", padding:"2px 6px", borderRadius:10 }}>{STATUS_LABELS[p.status]}</span>
           {isDnf && p.dnf_reason && (
             <span style={{ fontFamily:"monospace", fontSize:10, color:"#c06060", opacity:0.7 }}>{open ? "▲" : "▼"}</span>
           )}
@@ -109,14 +109,14 @@ export default function Profile() {
     : (member.reviews||[]).filter(r => r.rating === parseInt(ratingFilter));
 
   return (
-    <div style={{ maxWidth:720, margin:"0 auto", padding:"32px 24px" }}>
+    <div style={{ maxWidth:720, margin:"0 auto", padding: isMobile ? "16px 12px" : "32px 24px" }}>
 
       {/* Header card */}
-      <div style={{ background:`linear-gradient(160deg,${C.card},${C.card2})`, border:`1px solid ${C.border}`, borderRadius:8, padding:"28px 24px", marginBottom:20, display:"flex", gap:20, alignItems:"flex-start", flexWrap:"wrap" }}>
+      <div style={{ background:`linear-gradient(160deg,${C.card},${C.card2})`, border:`1px solid ${C.border}`, borderRadius:8, padding: isMobile ? "24px 16px" : "28px 24px", marginBottom:20, display:"flex", flexDirection: isMobile ? "column" : "row", gap:20, alignItems: isMobile ? "center" : "flex-start", textAlign: isMobile ? "center" : "left" }}>
         <Avatar name={member.display_name||member.username} src={member.avatar_url} size={72} />
-        <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ flex:1, minWidth:0, width: isMobile ? "100%" : "auto" }}>
           {editing ? (
-            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+            <div style={{ display:"flex", flexDirection:"column", gap:12, width:"100%", textAlign:"left" }}>
               <div>
                 <label style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, display:"block", marginBottom:4 }}>DISPLAY NAME</label>
                 <input value={form.display_name} onChange={e=>setForm(f=>({...f,display_name:e.target.value}))} style={INP} />
@@ -126,49 +126,50 @@ export default function Profile() {
                 <textarea value={form.bio} onChange={e=>setForm(f=>({...f,bio:e.target.value}))} rows={3} style={{...INP,resize:"vertical"}} placeholder="Tell the club about yourself…" />
               </div>
               <div>
-                <label style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, display:"block", marginBottom:6 }}>THEME</label>
-                <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                <label style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, display:"block", marginBottom:8 }}>THEME</label>
+                <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(auto-fill, minmax(130px,1fr))", gap:6 }}>
                   {Object.entries(THEMES).map(([k,v]) => (
                     <button key={k} onClick={()=>setForm(f=>({...f,theme:k}))}
-                      style={{ background:form.theme===k?v.accent2+"44":"transparent", border:`2px solid ${form.theme===k?v.accent2:C.border}`, borderRadius:6, color:form.theme===k?v.accent2:C.dim, fontFamily:"monospace", fontSize:11, padding:"5px 12px", cursor:"pointer", display:"flex", alignItems:"center", gap:6 }}>
-                      <span style={{ width:10, height:10, borderRadius:"50%", background:v.accent, display:"inline-block" }} />
+                      style={{ background:form.theme===k?v.accent2+"33":"transparent", border:`2px solid ${form.theme===k?v.accent2:C.border}`, borderRadius:6, color:form.theme===k?v.accent2:C.dim, fontFamily:"monospace", fontSize:11, padding:"8px 10px", cursor:"pointer", display:"flex", alignItems:"center", gap:6 }}>
+                      <span style={{ width:10, height:10, borderRadius:"50%", background:v.accent, display:"inline-block", flexShrink:0 }} />
                       {v.label}
                     </button>
                   ))}
                 </div>
               </div>
               <div style={{ display:"flex", gap:8, marginTop:4 }}>
-                <button onClick={save} style={{ background:C.accent2, border:"none", borderRadius:3, color:C.bg, fontFamily:"'Playfair Display',serif", fontSize:13, fontWeight:700, padding:"7px 16px", cursor:"pointer" }}>Save</button>
-                <button onClick={()=>setEditing(false)} style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:3, color:C.dim, fontFamily:"monospace", fontSize:12, padding:"7px 12px", cursor:"pointer" }}>Cancel</button>
+                <button onClick={save} style={{ background:C.accent2, border:"none", borderRadius:6, color:C.bg, fontFamily:"'Playfair Display',serif", fontSize:13, fontWeight:700, padding: isMobile ? "11px" : "7px 16px", cursor:"pointer", flex: isMobile ? 1 : "none" }}>Save</button>
+                <button onClick={()=>setEditing(false)} style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:6, color:C.dim, fontFamily:"monospace", fontSize:12, padding: isMobile ? "11px" : "7px 12px", cursor:"pointer", flex: isMobile ? 1 : "none" }}>Cancel</button>
               </div>
             </div>
           ) : (
             <>
               <div style={{ fontFamily:"'Playfair Display',serif", fontSize:24, color:C.text, fontWeight:700 }}>{member.display_name||member.username}</div>
-              {member.is_admin && <span style={{ fontFamily:"monospace", fontSize:11, color:C.accent, background:C.accent+"22", padding:"2px 8px", borderRadius:10 }}>✦ Admin</span>}
+              {member.is_admin && <span style={{ fontFamily:"monospace", fontSize:11, color:C.accent, background:C.accent+"22", padding:"2px 8px", borderRadius:10, display:"inline-block", marginTop:4 }}>✦ Admin</span>}
               {member.bio && <p style={{ fontFamily:"'EB Garamond',serif", fontSize:15, color:C.muted, fontStyle:"italic", marginTop:8, lineHeight:1.6 }}>{member.bio}</p>}
-              <div style={{ marginTop:12, display:"grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, auto)", gap: isMobile ? 8 : 16 }}>
+              <div style={{ marginTop:12, display:"grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, auto)", gap: isMobile ? 8 : 16, justifyContent: isMobile ? "stretch" : "start" }}>
                 {[["Books Finished",finished],["Currently Reading",reading],["Reviews",member.reviews?.length||0],["Avg Rating",avgRating]].map(([l,v]) => (
-                  <div key={l} style={{ textAlign:"center", background: isMobile ? C.card : "transparent", borderRadius: isMobile ? 8 : 0, padding: isMobile ? "10px 8px" : 0, border: isMobile ? `1px solid ${C.border}` : "none" }}>
-                    <div style={{ fontFamily:"'Playfair Display',serif", fontSize: isMobile ? 20 : 22, color:C.accent, fontWeight:700 }}>{v}</div>
+                  <div key={l} style={{ textAlign:"center", background: isMobile ? C.bg : "transparent", borderRadius: isMobile ? 8 : 0, padding: isMobile ? "12px 8px" : 0, border: isMobile ? `1px solid ${C.border}` : "none" }}>
+                    <div style={{ fontFamily:"'Playfair Display',serif", fontSize: isMobile ? 22 : 22, color:C.accent, fontWeight:700 }}>{v}</div>
                     <div style={{ fontFamily:"monospace", fontSize:10, color:C.dimmer, marginTop:2 }}>{l.toUpperCase()}</div>
                   </div>
                 ))}
               </div>
               {isMe && (
-                <div style={{ marginTop:12, display:"flex", flexDirection:"column", alignItems:"center", gap:8 }}>
-                  <button onClick={()=>setEditing(true)} style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:3, color:C.dim, fontFamily:"monospace", fontSize:12, padding:"6px 12px", cursor:"pointer" }}>Edit profile</button>
+                <div style={{ marginTop:16, display:"flex", flexDirection:"column", gap:8, width: isMobile ? "100%" : "auto", alignItems: isMobile ? "stretch" : "flex-start" }}>
+                  {isMobile && <div style={{ height:1, background:C.border, margin:"0 0 4px" }} />}
+                  <button onClick={()=>setEditing(true)} style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:6, color:C.dim, fontFamily:"monospace", fontSize:12, padding: isMobile ? "10px" : "6px 12px", cursor:"pointer", width: isMobile ? "100%" : "auto" }}>Edit profile</button>
+                  {!isMobile && (
+                    <button onClick={() => { logout(); nav("/"); }}
+                      style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:3, color:C.dimmer, fontFamily:"monospace", fontSize:11, padding:"6px 16px", cursor:"pointer" }}>
+                      Sign out
+                    </button>
+                  )}
                   {isMobile && (
-                    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:8, marginTop:4 }}>
-                      <select value={theme} onChange={e => updateTheme(e.target.value)}
-                        style={{ background:C.vdark, border:`1px solid ${C.border}`, borderRadius:4, color:C.dim, fontFamily:"monospace", fontSize:11, padding:"5px 10px", cursor:"pointer", outline:"none" }}>
-                        {Object.entries(THEMES).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
-                      </select>
-                      <button onClick={() => { logout(); nav("/"); }}
-                        style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:3, color:C.dimmer, fontFamily:"monospace", fontSize:11, padding:"6px 16px", cursor:"pointer" }}>
-                        Sign out
-                      </button>
-                    </div>
+                    <button onClick={() => { logout(); nav("/"); }}
+                      style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:6, color:C.dimmer, fontFamily:"monospace", fontSize:11, padding:"10px", cursor:"pointer", width:"100%" }}>
+                      Sign out
+                    </button>
                   )}
                 </div>
               )}
@@ -221,7 +222,7 @@ export default function Profile() {
           <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, letterSpacing:1, marginBottom:12 }}>READING PROGRESS</div>
           <div style={{ display:"grid", gap:8 }}>
             {member.progress.filter(p=>p.status!=="want_to_read").map(p => (
-              <DnfCard key={p.id} p={p} C={C} />
+              <DnfCard key={p.id} p={p} C={C} isMobile={isMobile} />
             ))}
           </div>
         </div>
