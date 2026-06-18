@@ -472,7 +472,6 @@ export default function Library() {
     const rect = searchInputRef.current.getBoundingClientRect();
     return { position:"fixed", top: rect.bottom + 4, left: rect.left, right: window.innerWidth - rect.right };
   };
-  const searchInputRef  = useRef(null);
 
   const INP = { width:"100%", background:C.bg, border:`1px solid ${C.border}`, borderRadius:3, color:C.text, fontFamily:"'EB Garamond',serif", fontSize:15, padding:"7px 11px", outline:"none", boxSizing:"border-box" };
 
@@ -893,7 +892,7 @@ export default function Library() {
                 <div style={{ fontFamily:"'Playfair Display',serif", fontSize:17, marginBottom:14, color:C.accent, fontStyle:"italic" }}>Add a Book to the Club</div>
 
               {/* ── Open Library search ── */}
-              <div style={{ marginBottom:18, position:"relative" }}>
+              <div onClick={e => e.stopPropagation()} style={{ marginBottom:18, position:"relative" }}>
                 <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.accent2, marginBottom:4 }}>🔍 SEARCH TO PRE-FILL</label>
                 <div style={{ position:"relative" }}>
                   <input
