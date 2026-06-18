@@ -945,14 +945,13 @@ export default function Library() {
           )}
 
           {/* Add form */}
-          {showForm && isMobile && (
-            <div onClick={closeForm} style={{ position:"fixed", inset:0, background:"#00000099", zIndex:100, display:"flex", alignItems:"flex-end" }}>
-              <div onClick={e=>e.stopPropagation()} style={{ background:C.bg2, borderTop:`1px solid ${C.border}`, borderRadius:"16px 16px 0 0", padding:"0 16px 20px", width:"100%", maxHeight:"90dvh", overflowY:"auto", paddingBottom:`calc(20px + env(safe-area-inset-bottom))` }}>
-                <div style={{ width:36, height:4, background:"#3d2f5e", borderRadius:2, margin:"10px auto 16px" }} />
-                <div style={{ fontFamily:"'Playfair Display',serif", fontSize:17, marginBottom:14, color:C.accent, fontStyle:"italic" }}>Add a Book to the Club</div>
+          {/* Add form — single unified form, works on mobile and desktop */}
+          {showForm && (
+            <div style={{ background:C.bg2, borderBottom:`1px solid ${C.border}`, padding: isMobile ? "16px 12px" : "20px 24px" }}>
+              <div style={{ fontFamily:"'Playfair Display',serif", fontSize:17, marginBottom:14, color:C.accent, fontStyle:"italic" }}>Add a Book to the Club</div>
 
               {/* ── Open Library search ── */}
-              <div ref={searchWrapRef} onClick={e => e.stopPropagation()} style={{ marginBottom:18, position:"relative" }}>
+              <div ref={searchWrapRef} style={{ marginBottom:18, position:"relative" }}>
                 <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.accent2, marginBottom:4 }}>🔍 SEARCH TO PRE-FILL</label>
                 <div style={{ position:"relative" }}>
                   <input
@@ -970,82 +969,12 @@ export default function Library() {
                 {searchError && (
                   <div style={{ fontFamily:"monospace", fontSize:11, color:"#c04040", marginTop:4 }}>⚠ {searchError}</div>
                 )}
-
                 {showResults && <SearchDropdown results={searchResults} onPick={pickSearchResult} C={C} />}
               </div>
 
               {/* Manual fields */}
               <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill,minmax(200px,1fr))", gap:12, marginBottom:14 }}>
                 <div style={{ gridColumn: isMobile ? "auto" : "span 2" }}>
-                  <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.dimmer, marginBottom:3 }}>TITLE *</label>
-                  <input ref={titleRef} value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} style={INP} />
-                </div>
-                <div>
-                  <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.dimmer, marginBottom:3 }}>AUTHOR</label>
-                  <input value={form.author} onChange={e=>setForm(f=>({...f,author:e.target.value}))} style={INP} />
-                </div>
-                <div>
-                  <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.dimmer, marginBottom:3 }}>SERIES</label>
-                  <input value={form.series} onChange={e=>setForm(f=>({...f,series:e.target.value}))} style={INP} />
-                </div>
-                <div>
-                  <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.dimmer, marginBottom:3 }}>DATE READ</label>
-                  <input type="date" value={form.date_read} onChange={e=>setForm(f=>({...f,date_read:e.target.value}))} style={{...INP,colorScheme:"dark"}} />
-                </div>
-                <div>
-                  <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.dimmer, marginBottom:3 }}>TOTAL PAGES</label>
-                  <input type="number" value={form.total_pages} onChange={e=>setForm(f=>({...f,total_pages:e.target.value}))} placeholder="e.g. 400" style={INP} />
-                </div>
-                <div>
-                  <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.dimmer, marginBottom:3 }}>COVER URL</label>
-                  <input value={form.cover_url} onChange={e=>setForm(f=>({...f,cover_url:e.target.value}))} placeholder="https://…" style={INP} />
-                </div>
-                <div>
-                  <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.dimmer, marginBottom:3 }}>UPLOAD COVER</label>
-                  <input type="file" accept="image/*" onChange={e=>setCoverFile(e.target.files[0])} style={{ color:C.muted, fontFamily:"monospace", fontSize:12, marginTop:6 }} />
-                </div>
-              </div>
-              <div style={{ marginBottom:14 }}>
-                <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.dimmer, marginBottom:8 }}>GENRES — pick up to 5</label>
-                <GenrePicker value={form.genres} onChange={g=>setForm(f=>({...f,genres:g}))} />
-              </div>
-              <div style={{ marginBottom:14 }}>
-                <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:"#c04040", marginBottom:8 }}>⚠ TRIGGER WARNINGS</label>
-                <TwPicker value={form.trigger_warnings} onChange={t=>setForm(f=>({...f,trigger_warnings:t}))} />
-              </div>
-              <div style={{ display:"flex", gap:10 }}>
-                <button onClick={addBook} style={{ background:`linear-gradient(135deg,${C.accent},${C.accent2})`, border:"none", borderRadius:3, color:C.bg, fontFamily:"'Playfair Display',serif", fontSize:13, fontWeight:700, padding:"8px 20px", cursor:"pointer" }}>Add to Library</button>
-                <button onClick={closeForm} style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:3, color:C.dim, fontFamily:"monospace", fontSize:12, padding:"8px 14px", cursor:"pointer" }}>Cancel</button>
-              </div>
-            </div>
-          </div>
-          )}
-
-          {showForm && !isMobile && (
-            <div style={{ background:C.bg2, borderBottom:`1px solid ${C.border}`, padding:"20px 24px" }}>
-              <div style={{ fontFamily:"'Playfair Display',serif", fontSize:17, marginBottom:14, color:C.accent, fontStyle:"italic" }}>Add a Book to the Club</div>
-
-              {/* ── Open Library search ── */}
-              <div ref={searchWrapRef} style={{ marginBottom:18, position:"relative" }}>
-                <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.accent2, marginBottom:4 }}>🔍 SEARCH TO PRE-FILL</label>
-                <div style={{ position:"relative" }}>
-                  <input
-                    value={bookQuery}
-                    onChange={e => handleBookQueryChange(e.target.value)}
-                    onFocus={() => searchResults.length > 0 && setShowResults(true)}
-                    placeholder="Type a title or author to look up details…"
-                    style={{ ...INP, paddingRight: searchLoading ? 36 : 11 }}
-                  />
-                  {searchLoading && (
-                    <span style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", color:C.dimmer, fontSize:12, fontFamily:"monospace" }}>…</span>
-                  )}
-                </div>
-                {showResults && <SearchDropdown results={searchResults} onPick={pickSearchResult} C={C} />}
-              </div>
-
-              {/* Manual fields */}
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))", gap:12, marginBottom:14 }}>
-                <div style={{ gridColumn:"span 2" }}>
                   <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.dimmer, marginBottom:3 }}>TITLE *</label>
                   <input ref={titleRef} value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} style={INP} />
                 </div>
