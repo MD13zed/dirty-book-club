@@ -75,11 +75,11 @@ async function searchGoogleBooks(query) {
   if (!query || query.length < 3) return [];
   const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=6`;
   const res = await fetch(url);
+  if (res.status === 429 || res.status === 403) return []; // rate limited — silently skip
+  if (!res.ok) return [];
   const data = await res.json();
   return (data.items || []).map(item => {
     const info = item.volumeInfo || {};
-    // Google Books doesn't have a dedicated "series" field — sometimes
-    // present in subtitle, e.g. "Rogue Riders Duet, Book 2"
     const series = info.subtitle && /book\s*\d|#\d|series|duet|trilogy/i.test(info.subtitle)
       ? info.subtitle
       : "";
@@ -548,12 +548,13 @@ export default function Library() {
     setSearchError("");
     clearTimeout(searchDebounce.current);
     if (!val.trim()) { setSearchResults([]); setShowResults(false); return; }
+    if (val.trim().length < 3) return;
     searchDebounce.current = setTimeout(async () => {
       setSearchLoading(true);
       try {
         const [olResults, gbResults] = await Promise.all([
           searchOpenLibrary(val).catch(() => []),
-          searchGoogleBooks(val).catch(() => []),
+          searchGoogleBooks(val).catch(() => []),  // 429s caught here, returns []
         ]);
         const merged = mergeSearchResults(olResults, gbResults);
 
@@ -579,7 +580,7 @@ export default function Library() {
         setSearchError(err.message || "Search failed");
       }
       setSearchLoading(false);
-    }, 400);
+    }, 700);
   };
 
   const pickSearchResult = (result) => {
