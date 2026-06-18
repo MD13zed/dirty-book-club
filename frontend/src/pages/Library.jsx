@@ -227,6 +227,7 @@ async function fetchCoverByISBN(isbn) {
 
 // ── CSV Import Modal ───────────────────────────────────────────────────────
 function CsvImportModal({ C, onClose, onImported, existingBooks }) {
+  const isMobile = window.innerWidth < 640;
   const [stage, setStage]     = useState("upload");   // upload | preview | importing | done
   const [parsed, setParsed]   = useState([]);
   const [selected, setSelected] = useState(new Set());
@@ -317,8 +318,9 @@ function CsvImportModal({ C, onClose, onImported, existingBooks }) {
   };
 
   return (
-    <div onClick={onClose} style={{ position:"fixed", inset:0, background:"#00000099", zIndex:200, display:"flex", alignItems:"flex-start", justifyContent:"center", padding:"12px 8px", overflowY:"auto" }}>
-      <div onClick={e=>e.stopPropagation()} style={{ background:C.bg2, border:`1px solid ${C.border}`, borderRadius:8, padding:"20px 16px", width:"100%", maxWidth:620, overflowY:"auto" }}>
+    <div onClick={onClose} style={{ position:"fixed", inset:0, background:"#00000099", zIndex:200, display:"flex", alignItems: isMobile ? "flex-end" : "flex-start", justifyContent:"center", padding: isMobile ? 0 : "12px 8px", overflowY: isMobile ? "hidden" : "auto" }}>
+      <div onClick={e=>e.stopPropagation()} style={{ background:C.bg2, border:`1px solid ${C.border}`, borderRadius: isMobile ? "16px 16px 0 0" : 8, padding: isMobile ? "0 16px 20px" : "20px 16px", width:"100%", maxWidth:620, overflowY:"auto", maxHeight: isMobile ? "92dvh" : "none", paddingBottom: isMobile ? `calc(20px + env(safe-area-inset-bottom))` : undefined }}>
+        {isMobile && <div style={{ width:36, height:4, background:"#3d2f5e", borderRadius:2, margin:"10px auto 16px" }} />}
 
         {/* Header */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
@@ -366,27 +368,27 @@ function CsvImportModal({ C, onClose, onImported, existingBooks }) {
             <div style={{ display:"flex", flexDirection:"column", gap:6, maxHeight:340, overflowY:"auto", paddingRight:4 }}>
               {parsed.map((book, i) => (
                 <div key={i} onClick={() => toggle(i)}
-                  style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 10px", borderRadius:4, border:`1px solid ${selected.has(i)?C.accent+55:C.border}`, background:selected.has(i)?C.accent+"11":"transparent", cursor:"pointer", transition:"all 0.12s" }}>
-                  <div style={{ width:16, height:16, borderRadius:3, border:`2px solid ${selected.has(i)?C.accent:C.border}`, background:selected.has(i)?C.accent:"transparent", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                    {selected.has(i) && <span style={{ color:C.bg, fontSize:10, lineHeight:1 }}>✓</span>}
+                  style={{ display:"flex", alignItems:"center", gap:10, padding:"11px 10px", borderRadius:4, border:`1px solid ${selected.has(i)?C.accent+55:C.border}`, background:selected.has(i)?C.accent+"11":"transparent", cursor:"pointer", transition:"all 0.12s" }}>
+                  <div style={{ width:22, height:22, borderRadius:4, border:`2px solid ${selected.has(i)?C.accent:C.border}`, background:selected.has(i)?C.accent:"transparent", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                    {selected.has(i) && <span style={{ color:C.bg, fontSize:13, lineHeight:1, fontWeight:700 }}>✓</span>}
                   </div>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ fontFamily:"'EB Garamond',serif", fontSize:14, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{book.title}</div>
                     <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer }}>
-                      {book.author}{book.total_pages ? ` · ${book.total_pages}pp` : ""}{book.date_read ? ` · read ${book.date_read.slice(0,4)}` : ""}
+                      {book.author}{book.total_pages ? ` · ${book.total_pages}pp` : ""}{book.date_read ? ` · ${book.date_read.slice(0,4)}` : ""}
                     </div>
                   </div>
-                  {book.isbn && <div style={{ fontFamily:"monospace", fontSize:10, color:C.dimmer, flexShrink:0 }}>has cover</div>}
+                  {book.isbn && <div style={{ fontFamily:"monospace", fontSize:10, color:C.accent2, flexShrink:0 }}>📷</div>}
                 </div>
               ))}
             </div>
 
-            <div style={{ display:"flex", gap:10, marginTop:16 }}>
+            <div style={{ display:"flex", flexDirection:"column", gap:8, marginTop:16 }}>
               <button onClick={doImport} disabled={selected.size === 0}
-                style={{ background:`linear-gradient(135deg,${C.accent},${C.accent2})`, border:"none", borderRadius:3, color:C.bg, fontFamily:"'Playfair Display',serif", fontSize:13, fontWeight:700, padding:"9px 22px", cursor:selected.size?'pointer':'not-allowed', opacity:selected.size?1:0.5 }}>
+                style={{ background:`linear-gradient(135deg,${C.accent},${C.accent2})`, border:"none", borderRadius:6, color:C.bg, fontFamily:"'Playfair Display',serif", fontSize:14, fontWeight:700, padding:"12px 22px", cursor:selected.size?'pointer':'not-allowed', opacity:selected.size?1:0.5, width:"100%" }}>
                 Import {selected.size} book{selected.size!==1?"s":""}
               </button>
-              <button onClick={onClose} style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:3, color:C.dim, fontFamily:"monospace", fontSize:12, padding:"9px 14px", cursor:"pointer" }}>Cancel</button>
+              <button onClick={onClose} style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:6, color:C.dim, fontFamily:"monospace", fontSize:12, padding:"11px 14px", cursor:"pointer", width:"100%" }}>Cancel</button>
             </div>
           </div>
         )}

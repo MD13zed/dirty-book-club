@@ -147,11 +147,11 @@ export default function Profile() {
               <div style={{ fontFamily:"'Playfair Display',serif", fontSize:24, color:C.text, fontWeight:700 }}>{member.display_name||member.username}</div>
               {member.is_admin && <span style={{ fontFamily:"monospace", fontSize:11, color:C.accent, background:C.accent+"22", padding:"2px 8px", borderRadius:10 }}>✦ Admin</span>}
               {member.bio && <p style={{ fontFamily:"'EB Garamond',serif", fontSize:15, color:C.muted, fontStyle:"italic", marginTop:8, lineHeight:1.6 }}>{member.bio}</p>}
-              <div style={{ marginTop:12, display:"flex", gap:16, flexWrap:"wrap" }}>
+              <div style={{ marginTop:12, display:"grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, auto)", gap: isMobile ? 8 : 16 }}>
                 {[["Books Finished",finished],["Currently Reading",reading],["Reviews",member.reviews?.length||0],["Avg Rating",avgRating]].map(([l,v]) => (
-                  <div key={l} style={{ textAlign:"center" }}>
-                    <div style={{ fontFamily:"'Playfair Display',serif", fontSize:22, color:C.accent, fontWeight:700 }}>{v}</div>
-                    <div style={{ fontFamily:"monospace", fontSize:10, color:C.dimmer }}>{l}</div>
+                  <div key={l} style={{ textAlign:"center", background: isMobile ? C.card : "transparent", borderRadius: isMobile ? 8 : 0, padding: isMobile ? "10px 8px" : 0, border: isMobile ? `1px solid ${C.border}` : "none" }}>
+                    <div style={{ fontFamily:"'Playfair Display',serif", fontSize: isMobile ? 20 : 22, color:C.accent, fontWeight:700 }}>{v}</div>
+                    <div style={{ fontFamily:"monospace", fontSize:10, color:C.dimmer, marginTop:2 }}>{l.toUpperCase()}</div>
                   </div>
                 ))}
               </div>
