@@ -14,7 +14,7 @@ All notable changes to The Spicy Shelf are documented here.
 - **Service worker cache bumped** `spicy-shelf-v4` → `v5` so installed PWAs / phones evict the stale JS bundle and pick up the fixes on next load.
 
 ### Diagnostics (temporary)
-- Added a `SEARCH_DEBUG` flag (top of `frontend/src/pages/Library.jsx`, currently `true`) that shows a live readout under the prefill field — `loading`, `results` count, `show`, `err` — so the search state is visible on the phone. Set to `false` (or remove) once mobile prefill is confirmed working.
+- Added a `SEARCH_DEBUG` flag (top of `frontend/src/pages/Library.jsx`, currently `true`) that shows a live readout under the prefill field — `loading`, `results` count, `show`, `err`, and `ol` (the raw Open Library fetch outcome: `ok:N`, `HTTP<status>`, or `threw:<name>`) — so the search state is visible on the phone. Set to `false` (or remove) once mobile prefill is confirmed working.
 
 ---
 

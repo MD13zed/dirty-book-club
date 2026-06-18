@@ -54,17 +54,19 @@ const SORTS = [
 ];
 
 // ── Open Library search ────────────────────────────────────────────────────
-async function searchOpenLibrary(query) {
-  if (!query || query.length < 3) return [];
+async function searchOpenLibrary(query, onMeta) {
+  if (!query || query.length < 3) { onMeta?.("skip<3"); return []; }
   const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=6&fields=key,title,author_name,cover_i,number_of_pages_median,first_publish_year,isbn,subject,series`;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000); // 8s timeout
   try {
     const res = await fetch(url, { signal: controller.signal });
     clearTimeout(timeout);
-    if (!res.ok) return [];
+    if (!res.ok) { onMeta?.(`HTTP${res.status}`); return []; }
     const data = await res.json();
-    return (data.docs || []).map(d => ({
+    const docs = data.docs || [];
+    onMeta?.(`ok:${docs.length}`);
+    return docs.map(d => ({
       title:       d.title,
       author:      (d.author_name || [])[0] || "",
       cover_url:   d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : "",
@@ -74,8 +76,9 @@ async function searchOpenLibrary(query) {
       subjects:    d.subject || [],
       source:      "openlibrary",
     }));
-  } catch {
+  } catch (e) {
     clearTimeout(timeout);
+    onMeta?.(`threw:${e?.name || "Err"}`);
     return [];
   }
 }
@@ -459,6 +462,7 @@ export default function Library() {
   const [searchLoading,  setSearchLoading]  = useState(false);
   const [showResults,    setShowResults]    = useState(false);
   const [searchError,    setSearchError]    = useState("");
+  const [searchDbg,      setSearchDbg]      = useState("idle");
   const searchDebounce = useRef(null);
 
   const INP = { width:"100%", background:C.bg, border:`1px solid ${C.border}`, borderRadius:3, color:C.text, fontFamily:"'EB Garamond',serif", fontSize:15, padding:"7px 11px", outline:"none", boxSizing:"border-box" };
@@ -484,7 +488,7 @@ export default function Library() {
     searchDebounce.current = setTimeout(async () => {
       setSearchLoading(true);
       try {
-        const olResults = await searchOpenLibrary(val).catch(() => []);
+        const olResults = await searchOpenLibrary(val, setSearchDbg).catch(() => []);
 
         const existingByTitleAuthor = new Set(books.map(b => normalizeKey(b.title, b.author)));
         const existingByTitleOnly   = new Set(books.map(b => normalizeKey(b.title, "")));
@@ -898,7 +902,7 @@ export default function Library() {
                 )}
                 {SEARCH_DEBUG && (
                   <div style={{ fontFamily:"monospace", fontSize:10, color:C.dimmer, marginTop:4, wordBreak:"break-all" }}>
-                    dbg · loading={String(searchLoading)} · results={searchResults.length} · show={String(showResults)} · err={searchError || "—"}
+                    dbg · loading={String(searchLoading)} · results={searchResults.length} · show={String(showResults)} · err={searchError || "—"} · ol={searchDbg}
                   </div>
                 )}
                 {showResults && <SearchDropdown results={searchResults} onPick={pickSearchResult} C={C} inline />}
@@ -976,7 +980,7 @@ export default function Library() {
                 )}
                 {SEARCH_DEBUG && (
                   <div style={{ fontFamily:"monospace", fontSize:10, color:C.dimmer, marginTop:4, wordBreak:"break-all" }}>
-                    dbg · loading={String(searchLoading)} · results={searchResults.length} · show={String(showResults)} · err={searchError || "—"}
+                    dbg · loading={String(searchLoading)} · results={searchResults.length} · show={String(showResults)} · err={searchError || "—"} · ol={searchDbg}
                   </div>
                 )}
                 {showResults && <SearchDropdown results={searchResults} onPick={pickSearchResult} C={C} />}
