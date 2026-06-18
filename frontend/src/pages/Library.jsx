@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useTheme, useAuth } from "../App";
 import { api } from "../api";
@@ -481,13 +482,50 @@ export default function Library() {
     };
   }, []);
 
-  // On mobile, use position:fixed so dropdown isn't clipped by overflow:auto sheet
-  const getDropdownStyle = () => {
-    if (!isMobile || !searchInputRef.current) {
-      return { position:"absolute", top:"100%", left:0, right:0 };
-    }
+  // Renders dropdown via portal so Android Chrome overflow:auto can't clip it
+  const SearchDropdown = ({ results, onPick, C }) => {
+    if (!results.length || !searchInputRef.current) return null;
     const rect = searchInputRef.current.getBoundingClientRect();
-    return { position:"fixed", top: rect.bottom + 4, left: rect.left, right: window.innerWidth - rect.right };
+    return createPortal(
+      <div style={{
+        position:"fixed",
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+        background:C.card,
+        border:`1px solid ${C.border}`,
+        borderRadius:4,
+        zIndex:9999,
+        boxShadow:"0 8px 24px #0008",
+        overflow:"hidden",
+        maxHeight: 320,
+        overflowY:"auto",
+      }}>
+        {results.map((r, i) => (
+          <div key={i}
+            onMouseDown={e => { e.preventDefault(); onPick(r); }}
+            onTouchEnd={e => { e.preventDefault(); onPick(r); }}
+            style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderBottom: i < results.length-1 ? `1px solid ${C.border2}` : "none", cursor:"pointer", background:"transparent" }}
+            onTouchStart={e => e.currentTarget.style.background = C.bg2}
+            onTouchCancel={e => e.currentTarget.style.background = "transparent"}
+            onMouseEnter={e => e.currentTarget.style.background = C.bg2}
+            onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+            {r.cover_url
+              ? <img src={r.cover_url} alt="" style={{ width:28, height:40, objectFit:"cover", borderRadius:2, flexShrink:0 }} />
+              : <div style={{ width:28, height:40, background:C.border, borderRadius:2, flexShrink:0 }} />
+            }
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontFamily:"'EB Garamond',serif", fontSize:14, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{r.title}</div>
+              <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer }}>{r.author}{r.total_pages ? ` · ${r.total_pages}pp` : ""}</div>
+            </div>
+            {r.alreadyInLibrary && (
+              <span style={{ fontFamily:"monospace", fontSize:10, color:C.accent2, border:`1px solid ${C.accent2}55`, borderRadius:3, padding:"2px 6px", flexShrink:0 }}>In library</span>
+            )}
+          </div>
+        ))}
+      </div>,
+      document.body
+    );
   };
 
   const INP = { width:"100%", background:C.bg, border:`1px solid ${C.border}`, borderRadius:3, color:C.text, fontFamily:"'EB Garamond',serif", fontSize:15, padding:"7px 11px", outline:"none", boxSizing:"border-box" };
@@ -933,34 +971,7 @@ export default function Library() {
                   <div style={{ fontFamily:"monospace", fontSize:11, color:"#c04040", marginTop:4 }}>⚠ {searchError}</div>
                 )}
 
-                {showResults && searchResults.length > 0 && (
-                  <div style={{ ...getDropdownStyle(), background:C.card, border:`1px solid ${C.border}`, borderRadius:4, zIndex:500, boxShadow:"0 8px 24px #0005", overflow:"hidden" }}>
-                    {searchResults.map((r, i) => (
-                      <div key={i}
-                        onMouseDown={e => { e.preventDefault(); pickSearchResult(r); }}
-                        onTouchEnd={e => { e.preventDefault(); pickSearchResult(r); }}
-                        style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 12px", borderBottom: i < searchResults.length-1 ? `1px solid ${C.border2}` : "none", cursor:"pointer", transition:"background 0.1s" }}
-                        onMouseEnter={e => e.currentTarget.style.background = C.bg2}
-                        onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                        {r.cover_url
-                          ? <img src={r.cover_url} alt="" style={{ width:28, height:40, objectFit:"cover", borderRadius:2, flexShrink:0 }} />
-                          : <div style={{ width:28, height:40, background:C.border, borderRadius:2, flexShrink:0 }} />
-                        }
-                        <div style={{ flex:1, minWidth:0 }}>
-                          <div style={{ fontFamily:"'EB Garamond',serif", fontSize:14, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{r.title}</div>
-                          <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer }}>
-                            {r.author}{r.total_pages ? ` · ${r.total_pages}pp` : ""}
-                          </div>
-                        </div>
-                        {r.alreadyInLibrary && (
-                          <span style={{ fontFamily:"monospace", fontSize:10, color:C.accent2, border:`1px solid ${C.accent2}55`, borderRadius:3, padding:"2px 6px", flexShrink:0, whiteSpace:"nowrap" }}>
-                            In library
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {showResults && <SearchDropdown results={searchResults} onPick={pickSearchResult} C={C} />}
               </div>
 
               {/* Manual fields */}
@@ -1029,24 +1040,7 @@ export default function Library() {
                     <span style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", color:C.dimmer, fontSize:12, fontFamily:"monospace" }}>…</span>
                   )}
                 </div>
-                {showResults && searchResults.length > 0 && (
-                  <div style={{ position:"absolute", top:"100%", left:0, right:0, background:C.card, border:`1px solid ${C.border}`, borderRadius:4, zIndex:150, boxShadow:"0 8px 24px #0005", overflow:"hidden" }}>
-                    {searchResults.map((r, i) => (
-                      <div key={i}
-                        onMouseDown={e => { e.preventDefault(); pickSearchResult(r); }}
-                        onTouchEnd={e => { e.preventDefault(); pickSearchResult(r); }}
-                        style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 12px", borderBottom: i < searchResults.length-1 ? `1px solid ${C.border2}` : "none", cursor:"pointer", transition:"background 0.1s" }}
-                        onMouseEnter={e => e.currentTarget.style.background = C.bg2}
-                        onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                        {r.cover_url ? <img src={r.cover_url} alt="" style={{ width:28, height:40, objectFit:"cover", borderRadius:2, flexShrink:0 }} /> : <div style={{ width:28, height:40, background:C.border, borderRadius:2, flexShrink:0 }} />}
-                        <div style={{ flex:1, minWidth:0 }}>
-                          <div style={{ fontFamily:"'EB Garamond',serif", fontSize:14, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{r.title}</div>
-                          <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer }}>{r.author}{r.total_pages ? ` · ${r.total_pages}pp` : ""}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {showResults && <SearchDropdown results={searchResults} onPick={pickSearchResult} C={C} />}
               </div>
 
               {/* Manual fields */}
