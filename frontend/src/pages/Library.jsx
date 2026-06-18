@@ -464,6 +464,22 @@ export default function Library() {
   const [searchError, setSearchError] = useState("");
   const searchDebounce = useRef(null);
   const searchInputRef = useRef(null);
+  const searchWrapRef  = useRef(null);
+
+  // Close dropdown when tapping outside the search area
+  useEffect(() => {
+    const handler = (e) => {
+      if (searchWrapRef.current && !searchWrapRef.current.contains(e.target)) {
+        setShowResults(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("touchstart", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("touchstart", handler);
+    };
+  }, []);
 
   // On mobile, use position:fixed so dropdown isn't clipped by overflow:auto sheet
   const getDropdownStyle = () => {
@@ -898,14 +914,13 @@ export default function Library() {
                 <div style={{ fontFamily:"'Playfair Display',serif", fontSize:17, marginBottom:14, color:C.accent, fontStyle:"italic" }}>Add a Book to the Club</div>
 
               {/* ── Open Library search ── */}
-              <div onClick={e => e.stopPropagation()} style={{ marginBottom:18, position:"relative" }}>
+              <div ref={searchWrapRef} onClick={e => e.stopPropagation()} style={{ marginBottom:18, position:"relative" }}>
                 <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.accent2, marginBottom:4 }}>🔍 SEARCH TO PRE-FILL</label>
                 <div style={{ position:"relative" }}>
                   <input
                     ref={searchInputRef}
                     value={bookQuery}
                     onChange={e => handleBookQueryChange(e.target.value)}
-                    onBlur={() => setTimeout(() => setShowResults(false), 500)}
                     onFocus={() => searchResults.length > 0 && setShowResults(true)}
                     placeholder="Type a title or author to look up details…"
                     style={{ ...INP, paddingRight: searchLoading ? 36 : 11 }}
@@ -1000,13 +1015,12 @@ export default function Library() {
               <div style={{ fontFamily:"'Playfair Display',serif", fontSize:17, marginBottom:14, color:C.accent, fontStyle:"italic" }}>Add a Book to the Club</div>
 
               {/* ── Open Library search ── */}
-              <div style={{ marginBottom:18, position:"relative" }}>
+              <div ref={searchWrapRef} style={{ marginBottom:18, position:"relative" }}>
                 <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.accent2, marginBottom:4 }}>🔍 SEARCH TO PRE-FILL</label>
                 <div style={{ position:"relative" }}>
                   <input
                     value={bookQuery}
                     onChange={e => handleBookQueryChange(e.target.value)}
-                    onBlur={() => setTimeout(() => setShowResults(false), 500)}
                     onFocus={() => searchResults.length > 0 && setShowResults(true)}
                     placeholder="Type a title or author to look up details…"
                     style={{ ...INP, paddingRight: searchLoading ? 36 : 11 }}
