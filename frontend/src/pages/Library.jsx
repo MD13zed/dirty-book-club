@@ -461,8 +461,7 @@ export default function Library() {
   const [searchResults,  setSearchResults]  = useState([]);
   const [searchLoading,  setSearchLoading]  = useState(false);
   const [showResults,    setShowResults]    = useState(false);
-  const searchDebounce = useRef(null);
-  const searchInputRef  = useRef(null);
+  const [searchError, setSearchError] = useState("");
 
   // On mobile, use position:fixed so dropdown isn't clipped by overflow:auto sheet
   const getDropdownStyle = () => {
@@ -489,6 +488,7 @@ export default function Library() {
   // ── Debounced search — Open Library + Google Books, merged ──────────────
   const handleBookQueryChange = (val) => {
     setBookQuery(val);
+    setSearchError("");
     clearTimeout(searchDebounce.current);
     if (!val.trim()) { setSearchResults([]); setShowResults(false); return; }
     searchDebounce.current = setTimeout(async () => {
@@ -516,7 +516,11 @@ export default function Library() {
 
         setSearchResults(flagged);
         setShowResults(true);
-      } catch {}
+        setSearchError("");
+      } catch (err) {
+        console.error("Search error:", err);
+        setSearchError(err.message || "Search failed");
+      }
       setSearchLoading(false);
     }, 400);
   };
@@ -908,6 +912,9 @@ export default function Library() {
                     <span style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", color:C.dimmer, fontSize:12, fontFamily:"monospace" }}>…</span>
                   )}
                 </div>
+                {searchError && (
+                  <div style={{ fontFamily:"monospace", fontSize:11, color:"#c04040", marginTop:4 }}>⚠ {searchError}</div>
+                )}
 
                 {showResults && searchResults.length > 0 && (
                   <div style={{ ...getDropdownStyle(), background:C.card, border:`1px solid ${C.border}`, borderRadius:4, zIndex:500, boxShadow:"0 8px 24px #0005", overflow:"hidden" }}>
