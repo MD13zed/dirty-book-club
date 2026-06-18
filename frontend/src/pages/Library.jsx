@@ -392,9 +392,8 @@ function SearchDropdown({ results, onPick, C }) {
     <div style={{ position:"absolute", top:"100%", left:0, right:0, background:C.card, border:`1px solid ${C.border}`, borderRadius:4, zIndex:200, boxShadow:"0 8px 24px #0008", overflow:"hidden", maxHeight:280, overflowY:"auto" }}>
       {results.map((r, i) => (
         <div key={i}
-          onMouseDown={e => { e.preventDefault(); onPick(r); }}
-          onTouchEnd={e => { e.preventDefault(); onPick(r); }}
-          style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderBottom: i < results.length-1 ? `1px solid ${C.border2}` : "none", cursor:"pointer", background:"transparent" }}
+          onPointerDown={e => { e.preventDefault(); onPick(r); }}
+          style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderBottom: i < results.length-1 ? `1px solid ${C.border2}` : "none", cursor:"pointer", background:"transparent", touchAction:"manipulation" }}
           onMouseEnter={e => e.currentTarget.style.background = C.bg2}
           onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
           {r.cover_url
