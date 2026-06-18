@@ -462,6 +462,17 @@ export default function Library() {
   const [searchLoading,  setSearchLoading]  = useState(false);
   const [showResults,    setShowResults]    = useState(false);
   const searchDebounce = useRef(null);
+  const searchInputRef  = useRef(null);
+
+  // On mobile, use position:fixed so dropdown isn't clipped by overflow:auto sheet
+  const getDropdownStyle = () => {
+    if (!isMobile || !searchInputRef.current) {
+      return { position:"absolute", top:"100%", left:0, right:0 };
+    }
+    const rect = searchInputRef.current.getBoundingClientRect();
+    return { position:"fixed", top: rect.bottom + 4, left: rect.left, right: window.innerWidth - rect.right };
+  };
+  const searchInputRef  = useRef(null);
 
   const INP = { width:"100%", background:C.bg, border:`1px solid ${C.border}`, borderRadius:3, color:C.text, fontFamily:"'EB Garamond',serif", fontSize:15, padding:"7px 11px", outline:"none", boxSizing:"border-box" };
 
@@ -886,6 +897,7 @@ export default function Library() {
                 <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.accent2, marginBottom:4 }}>🔍 SEARCH TO PRE-FILL</label>
                 <div style={{ position:"relative" }}>
                   <input
+                    ref={searchInputRef}
                     value={bookQuery}
                     onChange={e => handleBookQueryChange(e.target.value)}
                     onBlur={() => setTimeout(() => setShowResults(false), 300)}
@@ -899,7 +911,7 @@ export default function Library() {
                 </div>
 
                 {showResults && searchResults.length > 0 && (
-                  <div style={{ position:"absolute", top:"100%", left:0, right:0, background:C.card, border:`1px solid ${C.border}`, borderRadius:4, zIndex:200, boxShadow:"0 8px 24px #0005", overflow:"hidden" }}>
+                  <div style={{ ...getDropdownStyle(), background:C.card, border:`1px solid ${C.border}`, borderRadius:4, zIndex:500, boxShadow:"0 8px 24px #0005", overflow:"hidden" }}>
                     {searchResults.map((r, i) => (
                       <div key={i}
                         onMouseDown={e => { e.preventDefault(); pickSearchResult(r); }}
