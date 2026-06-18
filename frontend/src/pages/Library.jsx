@@ -427,6 +427,53 @@ function CsvImportModal({ C, onClose, onImported, existingBooks }) {
 }
 
 // ── Main Library component ─────────────────────────────────────────────────
+// Rendered via portal so no parent overflow/stacking context can clip it.
+// Defined outside Library so it has a stable identity across re-renders.
+function SearchDropdown({ results, anchorEl, onPick, C }) {
+  if (!results.length || !anchorEl) return null;
+  const rect = anchorEl.getBoundingClientRect();
+  return createPortal(
+    <div style={{
+      position:"fixed",
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: rect.width,
+      background:C.card,
+      border:`1px solid ${C.border}`,
+      borderRadius:4,
+      zIndex:9999,
+      boxShadow:"0 8px 24px #0008",
+      overflow:"hidden",
+      maxHeight:320,
+      overflowY:"auto",
+    }}>
+      {results.map((r, i) => (
+        <div key={i}
+          onMouseDown={e => { e.preventDefault(); onPick(r); }}
+          onTouchEnd={e => { e.preventDefault(); onPick(r); }}
+          style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderBottom: i < results.length-1 ? `1px solid ${C.border2}` : "none", cursor:"pointer", background:"transparent" }}
+          onTouchStart={e => { e.currentTarget.style.background = C.bg2; }}
+          onTouchCancel={e => { e.currentTarget.style.background = "transparent"; }}
+          onMouseEnter={e => { e.currentTarget.style.background = C.bg2; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
+          {r.cover_url
+            ? <img src={r.cover_url} alt="" style={{ width:28, height:40, objectFit:"cover", borderRadius:2, flexShrink:0 }} />
+            : <div style={{ width:28, height:40, background:C.border, borderRadius:2, flexShrink:0 }} />
+          }
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontFamily:"'EB Garamond',serif", fontSize:14, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{r.title}</div>
+            <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer }}>{r.author}{r.total_pages ? ` · ${r.total_pages}pp` : ""}</div>
+          </div>
+          {r.alreadyInLibrary && (
+            <span style={{ fontFamily:"monospace", fontSize:10, color:C.accent2, border:`1px solid ${C.accent2}55`, borderRadius:3, padding:"2px 6px", flexShrink:0 }}>In library</span>
+          )}
+        </div>
+      ))}
+    </div>,
+    document.body
+  );
+}
+
 export default function Library() {
   const { C }    = useTheme();
   const { user } = useAuth();
@@ -481,52 +528,6 @@ export default function Library() {
       document.removeEventListener("touchstart", handler);
     };
   }, []);
-
-  // Renders dropdown via portal so Android Chrome overflow:auto can't clip it
-  const SearchDropdown = ({ results, onPick, C }) => {
-    if (!results.length || !searchInputRef.current) return null;
-    const rect = searchInputRef.current.getBoundingClientRect();
-    return createPortal(
-      <div style={{
-        position:"fixed",
-        top: rect.bottom + 4,
-        left: rect.left,
-        width: rect.width,
-        background:C.card,
-        border:`1px solid ${C.border}`,
-        borderRadius:4,
-        zIndex:9999,
-        boxShadow:"0 8px 24px #0008",
-        overflow:"hidden",
-        maxHeight: 320,
-        overflowY:"auto",
-      }}>
-        {results.map((r, i) => (
-          <div key={i}
-            onMouseDown={e => { e.preventDefault(); onPick(r); }}
-            onTouchEnd={e => { e.preventDefault(); onPick(r); }}
-            style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderBottom: i < results.length-1 ? `1px solid ${C.border2}` : "none", cursor:"pointer", background:"transparent" }}
-            onTouchStart={e => e.currentTarget.style.background = C.bg2}
-            onTouchCancel={e => e.currentTarget.style.background = "transparent"}
-            onMouseEnter={e => e.currentTarget.style.background = C.bg2}
-            onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-            {r.cover_url
-              ? <img src={r.cover_url} alt="" style={{ width:28, height:40, objectFit:"cover", borderRadius:2, flexShrink:0 }} />
-              : <div style={{ width:28, height:40, background:C.border, borderRadius:2, flexShrink:0 }} />
-            }
-            <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ fontFamily:"'EB Garamond',serif", fontSize:14, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{r.title}</div>
-              <div style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer }}>{r.author}{r.total_pages ? ` · ${r.total_pages}pp` : ""}</div>
-            </div>
-            {r.alreadyInLibrary && (
-              <span style={{ fontFamily:"monospace", fontSize:10, color:C.accent2, border:`1px solid ${C.accent2}55`, borderRadius:3, padding:"2px 6px", flexShrink:0 }}>In library</span>
-            )}
-          </div>
-        ))}
-      </div>,
-      document.body
-    );
-  };
 
   const INP = { width:"100%", background:C.bg, border:`1px solid ${C.border}`, borderRadius:3, color:C.text, fontFamily:"'EB Garamond',serif", fontSize:15, padding:"7px 11px", outline:"none", boxSizing:"border-box" };
 
@@ -969,7 +970,7 @@ export default function Library() {
                 {searchError && (
                   <div style={{ fontFamily:"monospace", fontSize:11, color:"#c04040", marginTop:4 }}>⚠ {searchError}</div>
                 )}
-                {showResults && <SearchDropdown results={searchResults} onPick={pickSearchResult} C={C} />}
+                {showResults && <SearchDropdown results={searchResults} anchorEl={searchInputRef.current} onPick={pickSearchResult} C={C} />}
               </div>
 
               {/* Manual fields */}
