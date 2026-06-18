@@ -524,7 +524,7 @@ export default function Library() {
   const pickSearchResult = (result) => {
     // Match Open Library subjects against our GENRES list (case-insensitive)
     const matchedGenres = GENRES.filter(g =>
-      result.subjects.some(s => s.toLowerCase().includes(g.toLowerCase()) || g.toLowerCase().includes(s.toLowerCase()))
+      (result.subjects || []).some(s => s.toLowerCase().includes(g.toLowerCase()) || g.toLowerCase().includes(s.toLowerCase()))
     ).slice(0, 5);
 
     // Some results embed series info in the title itself, e.g.
@@ -899,7 +899,7 @@ export default function Library() {
                     ref={searchInputRef}
                     value={bookQuery}
                     onChange={e => handleBookQueryChange(e.target.value)}
-                    onBlur={() => setTimeout(() => setShowResults(false), 300)}
+                    onBlur={() => setTimeout(() => setShowResults(false), 500)}
                     onFocus={() => searchResults.length > 0 && setShowResults(true)}
                     placeholder="Type a title or author to look up details…"
                     style={{ ...INP, paddingRight: searchLoading ? 36 : 11 }}
@@ -997,7 +997,7 @@ export default function Library() {
                   <input
                     value={bookQuery}
                     onChange={e => handleBookQueryChange(e.target.value)}
-                    onBlur={() => setTimeout(() => setShowResults(false), 300)}
+                    onBlur={() => setTimeout(() => setShowResults(false), 500)}
                     onFocus={() => searchResults.length > 0 && setShowResults(true)}
                     placeholder="Type a title or author to look up details…"
                     style={{ ...INP, paddingRight: searchLoading ? 36 : 11 }}
