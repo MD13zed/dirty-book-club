@@ -54,18 +54,27 @@ const SORTS = [
 async function searchOpenLibrary(query) {
   if (!query || query.length < 3) return [];
   const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=6&fields=key,title,author_name,cover_i,number_of_pages_median,first_publish_year,isbn,subject,series`;
-  const res = await fetch(url);
-  const data = await res.json();
-  return (data.docs || []).map(d => ({
-    title:       d.title,
-    author:      (d.author_name || [])[0] || "",
-    cover_url:   d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : "",
-    total_pages: d.number_of_pages_median || "",
-    isbn:        (d.isbn || [])[0] || "",
-    series:      (d.series || [])[0] || "",
-    subjects:    d.subject || [],
-    source:      "openlibrary",
-  }));
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000); // 8s timeout
+  try {
+    const res = await fetch(url, { signal: controller.signal, cache: "no-store" });
+    clearTimeout(timeout);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.docs || []).map(d => ({
+      title:       d.title,
+      author:      (d.author_name || [])[0] || "",
+      cover_url:   d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : "",
+      total_pages: d.number_of_pages_median || "",
+      isbn:        (d.isbn || [])[0] || "",
+      series:      (d.series || [])[0] || "",
+      subjects:    d.subject || [],
+      source:      "openlibrary",
+    }));
+  } catch {
+    clearTimeout(timeout);
+    return [];
+  }
 }
 
 // ── Google Books search ────────────────────────────────────────────────────
@@ -519,7 +528,7 @@ export default function Library() {
         setSearchError("");
       } catch (err) {
         console.error("Search error:", err);
-        setSearchError(err.message || "Search failed");
+        setSearchError(err.name === "AbortError" ? "Search timed out — try again" : (err.message || "Search failed"));
       }
       setSearchLoading(false);
     }, 700);
