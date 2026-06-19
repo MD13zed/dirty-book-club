@@ -100,11 +100,12 @@ export const api = {
   },
 };
 
-// Rewrites cover URLs that point at Open Library (unreachable on some networks)
-// to go through our own cover proxy. Cloudinary / other URLs pass through as-is.
+// Rewrites cover URLs from hosts that are unreachable on some networks
+// (Open Library) or http/mixed-content (Google Books thumbnails) to go through
+// our own cover proxy. Cloudinary / uploaded / other URLs pass through as-is.
 export const coverSrc = (url) => {
   if (!url) return "";
-  if (url.includes("openlibrary.org")) {
+  if (/openlibrary\.org|books\.google\.|googleusercontent\.com/.test(url)) {
     return `${BASE_URL}/api/booksearch/cover?u=${encodeURIComponent(url)}`;
   }
   return url;

@@ -6,6 +6,9 @@ All notable changes to The Spicy Shelf are documented here.
 
 ## [3.5.2] — 2026-06-18
 
+### Added
+- **Google Books re-added to prefill search (keyed, server-side)** — queried inside the `/api/booksearch` proxy alongside Open Library and merged (deduped by normalized title+author; Open Library stays canonical but borrows Google's cover / page count / ISBN when OL is missing them — Google has better indie/self-pub cover coverage). Requires `GOOGLE_BOOKS_API_KEY` in the **backend** environment; without it, search falls back to Open Library only. Google's cover thumbnails (often `http://books.google.com/...`) are routed through the cover proxy and forced to https, and `coverSrc()` now also rewrites Google image hosts. Key is never exposed to the client.
+
 ### Performance
 - **Search prefill feels faster** — debounce reduced 700 ms → 350 ms (half the wait before a search fires after you stop typing); client abort timeout tightened 8 s → 5 s (the search is now server-to-server so it reliably completes in well under 1 s); backend axios timeout tightened to match.
 
