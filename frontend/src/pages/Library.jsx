@@ -470,7 +470,7 @@ export default function Library() {
     searchDebounce.current = setTimeout(async () => {
       setSearchLoading(true);
       try {
-        const olResults = await searchOpenLibrary(val, setSearchDbg).catch(() => []);
+        const olResults = await searchOpenLibrary(val).catch(() => []);
 
         const existingByTitleAuthor = new Set(books.map(b => normalizeKey(b.title, b.author)));
         const existingByTitleOnly   = new Set(books.map(b => normalizeKey(b.title, "")));
