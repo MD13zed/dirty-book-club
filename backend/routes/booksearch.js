@@ -16,6 +16,7 @@ const GB_SEARCH   = "https://www.googleapis.com/books/v1/volumes";
 const COVER_OL    = "covers.openlibrary.org";
 const UA          = "TheSpicyShelf/1.0 (private book club app)";
 const TIMEOUT     = 5000;
+const GOOGLE_GRACE = 700; // ms we'll wait for Google *after* Open Library is ready
 
 // ── helpers ────────────────────────────────────────────────────────────────
 function stripSeries(rawTitle) {
@@ -108,13 +109,18 @@ router.get("/", async (req, res) => {
       })
     : Promise.reject(new Error("no google books key"));
 
-  const [olRes, gbRes] = await Promise.allSettled([olReq, gbReq]);
+  let olOk = false, gbOk = false;
+  const olP = olReq.then(r => { olOk = true; return mapOpenLibrary(r.data && r.data.docs); }).catch(() => []);
+  const gbP = gbReq.then(r => { gbOk = true; return mapGoogle(r.data && r.data.items); }).catch(() => []);
 
-  const ol = olRes.status === "fulfilled" ? mapOpenLibrary(olRes.value.data && olRes.value.data.docs) : [];
-  const gb = gbRes.status === "fulfilled" ? mapGoogle(gbRes.value.data && gbRes.value.data.items)      : [];
+  // Wait for Open Library (canonical), then give Google only a short grace
+  // window — a slow Google can't drag the whole response out. If Google was
+  // already done (common), this resolves instantly.
+  const ol = await olP;
+  const gb = await Promise.race([gbP, new Promise(r => setTimeout(() => r([]), GOOGLE_GRACE))]);
 
-  // If both upstreams failed, surface a 502 so the client can show an error.
-  if (olRes.status === "rejected" && gbRes.status === "rejected" && key) {
+  // Both upstreams failed (and Google was actually attempted) → surface an error.
+  if (!olOk && !gbOk && key) {
     return res.status(502).json({ error: "search upstream failed" });
   }
   res.json(merge(ol, gb));

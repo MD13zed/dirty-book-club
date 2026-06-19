@@ -34,7 +34,14 @@ app.use("/api/reading-now",   require("./routes/reading-now"));
 app.use("/api/digest",        require("./routes/digest"));
 app.use("/api/yearend",       require("./routes/yearend"));
 
-app.get("/health", (req, res) => res.json({ ok: true, ts: new Date() }));
+// Warm-up / liveness ping. DB-free on purpose: it keeps the Vercel function
+// warm (which is what the prefill search needs) without waking Neon, so the
+// DB can keep auto-suspending and preserve free-tier compute hours.
+// Point a cron-job.org job at https://<backend>/api/health every ~5 min.
+// `uptime` lets you see if a ping hit a warm instance (high) or cold (near 0).
+app.get(["/health", "/api/health"], (req, res) =>
+  res.json({ ok: true, ts: new Date(), uptime: Math.round(process.uptime()) })
+);
 app.use((req, res) => res.status(404).json({ error: "Not found" }));
 app.use((err, req, res, next) => { console.error(err); res.status(500).json({ error: err.message }); });
 

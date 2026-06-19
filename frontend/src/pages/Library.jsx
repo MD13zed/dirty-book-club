@@ -446,6 +446,7 @@ export default function Library() {
   const [showResults,    setShowResults]    = useState(false);
   const [searchError,    setSearchError]    = useState("");
   const searchDebounce = useRef(null);
+  const searchCache    = useRef(new Map()); // query string → raw merged results
 
   const INP = { width:"100%", background:C.bg, border:`1px solid ${C.border}`, borderRadius:3, color:C.text, fontFamily:"'EB Garamond',serif", fontSize:15, padding:"7px 11px", outline:"none", boxSizing:"border-box" };
 
@@ -468,20 +469,36 @@ export default function Library() {
     if (!val.trim()) { setSearchResults([]); setShowResults(false); return; }
     if (val.trim().length < 3) return;
     searchDebounce.current = setTimeout(async () => {
-      setSearchLoading(true);
-      try {
-        const olResults = await searchOpenLibrary(val).catch(() => []);
-
-        const existingByTitleAuthor = new Set(books.map(b => normalizeKey(b.title, b.author)));
-        const existingByTitleOnly   = new Set(books.map(b => normalizeKey(b.title, "")));
-        const flagged = olResults.slice(0, 8).map(r => ({
+      const flag = (list) => {
+        const byTA = new Set(books.map(b => normalizeKey(b.title, b.author)));
+        const byT  = new Set(books.map(b => normalizeKey(b.title, "")));
+        return list.slice(0, 8).map(r => ({
           ...r,
           alreadyInLibrary:
-            existingByTitleAuthor.has(normalizeKey(r.title, r.author)) ||
-            existingByTitleOnly.has(normalizeKey(r.title, "")),
+            byTA.has(normalizeKey(r.title, r.author)) || byT.has(normalizeKey(r.title, "")),
         }));
+      };
 
-        setSearchResults(flagged);
+      // Cache hit → show instantly, no network, no spinner (re-flag against the
+      // current library in case it changed since the result was cached).
+      const cached = searchCache.current.get(val);
+      if (cached) {
+        setSearchResults(flag(cached));
+        setShowResults(true);
+        setSearchError("");
+        return;
+      }
+
+      setSearchLoading(true);
+      try {
+        const results = await searchOpenLibrary(val).catch(() => []);
+        if (results.length) {
+          searchCache.current.set(val, results);
+          if (searchCache.current.size > 50) {
+            searchCache.current.delete(searchCache.current.keys().next().value);
+          }
+        }
+        setSearchResults(flag(results));
         setShowResults(true);
         setSearchError("");
       } catch (err) {
@@ -489,7 +506,7 @@ export default function Library() {
         setSearchError(err.name === "AbortError" ? "Search timed out — try again" : (err.message || "Search failed"));
       }
       setSearchLoading(false);
-    }, 350);
+    }, 300);
   };
 
   const pickSearchResult = (result) => {

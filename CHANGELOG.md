@@ -7,9 +7,11 @@ All notable changes to The Spicy Shelf are documented here.
 ## [3.5.2] — 2026-06-18
 
 ### Added
+- **`/api/health` warm-up route** — DB-free liveness endpoint (also still served at `/health` for local dev) returning `{ ok, ts, uptime }`. Pointing a cron-job.org job at `https://<backend>/api/health` every ~5 min keeps the Vercel function warm so prefill search avoids cold-start latency. Intentionally does not touch Neon, so the DB keeps auto-suspending and free-tier compute hours are preserved.
 - **Google Books re-added to prefill search (keyed, server-side)** — queried inside the `/api/booksearch` proxy alongside Open Library and merged (deduped by normalized title+author; Open Library stays canonical but borrows Google's cover / page count / ISBN when OL is missing them — Google has better indie/self-pub cover coverage). Requires `GOOGLE_BOOKS_API_KEY` in the **backend** environment; without it, search falls back to Open Library only. Google's cover thumbnails (often `http://books.google.com/...`) are routed through the cover proxy and forced to https, and `coverSrc()` now also rewrites Google image hosts. Key is never exposed to the client.
 
 ### Performance
+- **Prefill search is snappier, especially with Google Books on** — (1) backend no longer blocks on the slowest upstream: it responds as soon as Open Library is ready and gives Google only a 700 ms grace window (a slow Google can't drag the whole response out; if Google's already done, no extra wait); (2) client now caches results per query string, so backspacing/retyping shows instantly with no network call or spinner; (3) debounce trimmed 350 ms → 300 ms.
 - **Search prefill feels faster** — debounce reduced 700 ms → 350 ms (half the wait before a search fires after you stop typing); client abort timeout tightened 8 s → 5 s (the search is now server-to-server so it reliably completes in well under 1 s); backend axios timeout tightened to match.
 
 ### Fixed
