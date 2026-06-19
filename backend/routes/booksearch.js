@@ -21,7 +21,7 @@ router.get("/", async (req, res) => {
         limit:  6,
         fields: "key,title,author_name,cover_i,number_of_pages_median,first_publish_year,isbn,subject,series",
       },
-      timeout: 8000,
+      timeout: 5000,
       headers: { "User-Agent": UA },
     });
     const docs = Array.isArray(data && data.docs) ? data.docs : [];
@@ -54,7 +54,7 @@ router.get("/cover", async (req, res) => {
   try {
     const upstream = await axios.get(parsed.toString(), {
       responseType: "arraybuffer",
-      timeout: 8000,
+      timeout: 5000,
       headers: { "User-Agent": UA },
     });
     res.set("Content-Type", upstream.headers["content-type"] || "image/jpeg");

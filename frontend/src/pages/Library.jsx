@@ -6,10 +6,6 @@ import BookCard from "../components/BookCard";
 import BookModal from "../components/BookModal";
 import { GenrePicker, GENRES, genreColor, TwPicker, Avatar } from "../components/ui";
 
-// TEMP: flip to false (or delete) once mobile prefill is confirmed working.
-// Shows a live readout of the search state under the prefill field.
-const SEARCH_DEBUG = true;
-
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
   useEffect(() => {
@@ -57,7 +53,7 @@ const SORTS = [
 async function searchOpenLibrary(query, onMeta) {
   if (!query || query.length < 3) { onMeta?.("skip<3"); return []; }
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000); // 8s timeout
+  const timeout = setTimeout(() => controller.abort(), 5000); // 5s — server-to-server is fast
   try {
     const results = await api.searchBooks(query, controller.signal);
     clearTimeout(timeout);
@@ -449,7 +445,6 @@ export default function Library() {
   const [searchLoading,  setSearchLoading]  = useState(false);
   const [showResults,    setShowResults]    = useState(false);
   const [searchError,    setSearchError]    = useState("");
-  const [searchDbg,      setSearchDbg]      = useState("idle");
   const searchDebounce = useRef(null);
 
   const INP = { width:"100%", background:C.bg, border:`1px solid ${C.border}`, borderRadius:3, color:C.text, fontFamily:"'EB Garamond',serif", fontSize:15, padding:"7px 11px", outline:"none", boxSizing:"border-box" };
@@ -494,7 +489,7 @@ export default function Library() {
         setSearchError(err.name === "AbortError" ? "Search timed out — try again" : (err.message || "Search failed"));
       }
       setSearchLoading(false);
-    }, 700);
+    }, 350);
   };
 
   const pickSearchResult = (result) => {
@@ -887,11 +882,6 @@ export default function Library() {
                 {searchError && (
                   <div style={{ fontFamily:"monospace", fontSize:11, color:"#c04040", marginTop:4 }}>⚠ {searchError}</div>
                 )}
-                {SEARCH_DEBUG && (
-                  <div style={{ fontFamily:"monospace", fontSize:10, color:C.dimmer, marginTop:4, wordBreak:"break-all" }}>
-                    dbg · loading={String(searchLoading)} · results={searchResults.length} · show={String(showResults)} · err={searchError || "—"} · ol={searchDbg}
-                  </div>
-                )}
                 {showResults && <SearchDropdown results={searchResults} onPick={pickSearchResult} C={C} inline />}
               </div>
 
@@ -964,11 +954,6 @@ export default function Library() {
                 </div>
                 {searchError && (
                   <div style={{ fontFamily:"monospace", fontSize:11, color:"#c04040", marginTop:4 }}>⚠ {searchError}</div>
-                )}
-                {SEARCH_DEBUG && (
-                  <div style={{ fontFamily:"monospace", fontSize:10, color:C.dimmer, marginTop:4, wordBreak:"break-all" }}>
-                    dbg · loading={String(searchLoading)} · results={searchResults.length} · show={String(showResults)} · err={searchError || "—"} · ol={searchDbg}
-                  </div>
                 )}
                 {showResults && <SearchDropdown results={searchResults} onPick={pickSearchResult} C={C} />}
               </div>

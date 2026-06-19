@@ -6,6 +6,9 @@ All notable changes to The Spicy Shelf are documented here.
 
 ## [3.5.2] — 2026-06-18
 
+### Performance
+- **Search prefill feels faster** — debounce reduced 700 ms → 350 ms (half the wait before a search fires after you stop typing); client abort timeout tightened 8 s → 5 s (the search is now server-to-server so it reliably completes in well under 1 s); backend axios timeout tightened to match.
+
 ### Fixed
 - **Search-to-prefill and Open Library covers now work on restricted mobile networks** — some client networks (carrier / DNS / content filters) close the connection to `openlibrary.org` and `covers.openlibrary.org` by hostname, so on those phones the prefill search returned nothing and Open Library cover thumbnails showed as broken images, while desktop on an unfiltered network was fine. Search and cover images are now proxied through our own backend (`backend/routes/booksearch.js` → `GET /api/booksearch`, `GET /api/booksearch/cover`), which reaches Open Library server-side. The client only ever talks to our own origin. New frontend helper `coverSrc()` (in `frontend/src/api.js`) rewrites any `openlibrary.org` cover URL to the proxy at render time, so existing books with stored Open Library covers fix themselves with no DB migration. Cover responses are cached a week (`Cache-Control: immutable`) and the cover route is exempt from the heavy `/api` rate limit so a large library's first load can't 429.
 - **Search-to-prefill now works on mobile** — tapping a result in the "Search to pre-fill" dropdown when adding a book had no effect on phones (worked on desktop). The dropdown rows fired on touch-end, which on the mobile bottom sheet was lost to the soft-keyboard dismissal reflowing the layout out from under your finger (and to scroll-claim turning the tap into a `touchcancel`). Rows now select on `pointerdown` (press-down, before any reflow), unifying mouse + touch and matching the behaviour desktop already had. Added `touch-action: manipulation` on rows to suppress tap delay/double-tap zoom.
@@ -14,8 +17,8 @@ All notable changes to The Spicy Shelf are documented here.
 ### Changed
 - **Service worker cache bumped** `spicy-shelf-v4` → `v5` so installed PWAs / phones evict the stale JS bundle and pick up the fixes on next load.
 
-### Diagnostics (temporary)
-- Added a `SEARCH_DEBUG` flag (top of `frontend/src/pages/Library.jsx`, currently `true`) that shows a live readout under the prefill field — `loading`, `results` count, `show`, `err`, and `ol` (the raw Open Library fetch outcome: `ok:N`, `HTTP<status>`, or `threw:<name>`) — so the search state is visible on the phone. Set to `false` (or remove) once mobile prefill is confirmed working.
+### Diagnostics (temporary — removed)
+- `SEARCH_DEBUG` flag and `ol=` readout confirmed working (`ol=ok:6`); removed in this cleanup commit.
 
 ---
 
