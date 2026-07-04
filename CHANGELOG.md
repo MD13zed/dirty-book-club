@@ -4,82 +4,13 @@ All notable changes to The Spicy Shelf are documented here.
 
 ---
 
-## [3.5.2] — 2026-06-18
-
-### Added
-- **`/api/health` warm-up route** — DB-free liveness endpoint (also still served at `/health` for local dev) returning `{ ok, ts, uptime }`. Pointing a cron-job.org job at `https://<backend>/api/health` every ~5 min keeps the Vercel function warm so prefill search avoids cold-start latency. Intentionally does not touch Neon, so the DB keeps auto-suspending and free-tier compute hours are preserved.
-- **Google Books re-added to prefill search (keyed, server-side)** — queried inside the `/api/booksearch` proxy alongside Open Library and merged (deduped by normalized title+author; Open Library stays canonical but borrows Google's cover / page count / ISBN when OL is missing them — Google has better indie/self-pub cover coverage). Requires `GOOGLE_BOOKS_API_KEY` in the **backend** environment; without it, search falls back to Open Library only. Google's cover thumbnails (often `http://books.google.com/...`) are routed through the cover proxy and forced to https, and `coverSrc()` now also rewrites Google image hosts. Key is never exposed to the client.
-
-### Performance
-- **Prefill search is snappier, especially with Google Books on** — (1) backend no longer blocks on the slowest upstream: it responds as soon as Open Library is ready and gives Google only a 700 ms grace window (a slow Google can't drag the whole response out; if Google's already done, no extra wait); (2) client now caches results per query string, so backspacing/retyping shows instantly with no network call or spinner; (3) debounce trimmed 350 ms → 300 ms.
-- **Search prefill feels faster** — debounce reduced 700 ms → 350 ms (half the wait before a search fires after you stop typing); client abort timeout tightened 8 s → 5 s (the search is now server-to-server so it reliably completes in well under 1 s); backend axios timeout tightened to match.
+## [3.4.1] — 2026-07-04
 
 ### Fixed
-- **Prefill `setSearchDbg is not defined` crash** — the debug-cleanup commit removed the `searchDbg` state but left the search handler still passing `setSearchDbg` into `searchOpenLibrary`, throwing on every search. Removed the dangling argument.
-- **Search-to-prefill and Open Library covers now work on restricted mobile networks** — some client networks (carrier / DNS / content filters) close the connection to `openlibrary.org` and `covers.openlibrary.org` by hostname, so on those phones the prefill search returned nothing and Open Library cover thumbnails showed as broken images, while desktop on an unfiltered network was fine. Search and cover images are now proxied through our own backend (`backend/routes/booksearch.js` → `GET /api/booksearch`, `GET /api/booksearch/cover`), which reaches Open Library server-side. The client only ever talks to our own origin. New frontend helper `coverSrc()` (in `frontend/src/api.js`) rewrites any `openlibrary.org` cover URL to the proxy at render time, so existing books with stored Open Library covers fix themselves with no DB migration. Cover responses are cached a week (`Cache-Control: immutable`) and the cover route is exempt from the heavy `/api` rate limit so a large library's first load can't 429.
-- **Search-to-prefill now works on mobile** — tapping a result in the "Search to pre-fill" dropdown when adding a book had no effect on phones (worked on desktop). The dropdown rows fired on touch-end, which on the mobile bottom sheet was lost to the soft-keyboard dismissal reflowing the layout out from under your finger (and to scroll-claim turning the tap into a `touchcancel`). Rows now select on `pointerdown` (press-down, before any reflow), unifying mouse + touch and matching the behaviour desktop already had. Added `touch-action: manipulation` on rows to suppress tap delay/double-tap zoom.
-- **Mobile dropdown no longer clipped** — the add-book bottom sheet is an `overflow:auto` scroll container, which clips absolutely-positioned children; the results dropdown could render off the tappable area. On mobile the dropdown now renders inline (in normal flow, no nested scroll container) so it can't be clipped and can't swallow the tap. Desktop keeps the floating overlay.
-
-### Changed
-- **Service worker cache bumped** `spicy-shelf-v4` → `v5` so installed PWAs / phones evict the stale JS bundle and pick up the fixes on next load.
-
-### Diagnostics (temporary — removed)
-- `SEARCH_DEBUG` flag and `ol=` readout confirmed working (`ol=ok:6`); removed in this cleanup commit.
+- **BOTM history was being wiped on every new pick** — `POST /api/admin/botm` ran `UPDATE books SET botm_month=NULL` on the whole table before setting the new book's month, clearing `botm_month` off every previous Book of the Month. This happened regardless of whether "Post announcement to Discord" was checked, since the backend never read that flag in the first place — every save hit the same code path. Now the route only sets `botm_month` on the newly picked book; older picks keep theirs.
+- **"Post announcement to Discord" checkbox had no effect** — the backend ignored the `announce` flag entirely and posted to Discord on every BOTM save, checked or not. Now the route only calls `announceBookOfTheMonth` when `announce` is true.
 
 ---
-
-## [3.5.1] — 2026-06-17
-
-### Added
-- **PWA install banner on Android** — when Chrome detects the site is installable, a banner appears below the navbar with an Install button and a dismiss ✕. Tapping Install triggers the native browser prompt. Banner is hidden once installed or dismissed.
-
----
-
-## [3.6.0] — 2026-06-14
-
-### Added
-- **Google Books merged into search-to-prefill** — adding a book now searches both Open Library and Google Books and merges the results. Open Library has good coverage for traditionally published books, but misses most indie and self-published titles (which make up a lot of what the club reads) — Google Books fills that gap.
-- **Duplicate results removed** — if the same book appears in both sources, it's only shown once (matched by normalized title + author, with series/edition info stripped from the title first).
-- **"In library" badge** — search results that match a book already in the library are flagged with a small badge, so you can spot accidental re-adds before adding. Matches even when the search result's title includes series info that your library entry doesn't (e.g. "Twisted Trails" vs "Twisted Trails (Rogue Riders Duet Book 2)").
-- **Cleaner autofill for series titles** — picking a search result whose title embeds series info (e.g. "Book 2", "#1", "Duet", "Trilogy", "Saga") now splits that into the Series field automatically, leaving the Title field clean.
-
-### Notes
-- Google Books API requires no API key for basic search, same as Open Library — no new environment variables or backend changes.
-- Series field for Google Books results is inferred from the subtitle (e.g. "Rogue Riders Duet, Book 2") since Google Books has no dedicated series field — may not always be present depending on how the publisher listed it.
-
----
-
-## [3.5.0] — 2026-06-14
-
-### Added
-- **🎉 Club Applause** — weekly digest now includes a monthly shoutout section: top 3 readers (most books finished this calendar month) and top 3 reviewers (most reviews left this calendar month), with medal rankings. Section is skipped if nobody qualifies.
-
-### Changed
-- **Weekly digest schedule** — moved from Sundays 4pm UTC to **12pm UTC**, scheduled via cron-job.org.
-- **Top readers query** — now based on `finished_at` (the date a book was actually marked finished) instead of `updated_at`, so editing an unrelated field on an old entry no longer affects which month a finish counts toward.
-- **Leaderboard tie-breaking** — top readers and top reviewers now sort alphabetically by display name as a tiebreaker for equal counts, for deterministic ordering.
-
-### Fixed
-- **PWA icon** — `manifest.json` declared icons as `purpose: "any maskable"`, but the artwork is a circular badge with transparent padding that doesn't fill the maskable safe zone, causing the icon to appear cropped/wrong on Android home screens and in some browser contexts. Changed to `purpose: "any"` to match the actual artwork.
-
----
-
-## [3.5.0] — 2026-06-17
-
-### Changed (mobile only)
-- **Bottom sheet modal** — book cards now slide up from the bottom as a sheet with a drag handle and rounded top corners instead of a floating card. Max height 92dvh with internal scroll.
-- **Safe area insets** — body now respects `env(safe-area-inset-bottom)` so content isn't hidden behind the iPhone home bar. Modal sheet also pads for the home bar.
-- **Larger star tap targets** — star rating in the review section is 32px on mobile (was 22px) for easier tapping.
-- **Status change toast** — tapping a reading status button (Reading, Finished, DNF, etc.) now shows a brief confirmation toast at the bottom of the modal.
-- **Theme picker in mobile navbar** — 🎨 pill next to the profile avatar opens a popover with all theme options. Admin ⚙ badge stays between theme and avatar.
-- **Add book as bottom sheet** — tapping "+ Add Book" on mobile opens a bottom sheet overlay instead of expanding inline above the grid.
-- **Nominations tighter layout** — nomination cards are more compact on mobile, vote button is larger (48×48px min) and stacks the arrow above the count for easier tapping. Title truncates cleanly.
-
-## [3.4.1] — 2026-06-17
-
-### Fixed
-- **Mobile back button closes modal** — opening a book card now pushes a history entry so tapping back closes the modal instead of exiting the site/PWA.
-- **Reading Now tab syncs on progress change** — updating your reading status or page count now instantly refreshes the Reading Now tab without needing a full page reload.
 
 ## [3.4.0] — 2026-05-26
 

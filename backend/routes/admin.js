@@ -86,34 +86,29 @@ router.delete("/books/:id", async (req, res) => {
 // POST /api/admin/botm
 router.post("/botm", async (req, res) => {
   try {
-    const { book_id, month } = req.body;
+    const { book_id, month, announce = true } = req.body;
     if (!book_id || !month) return res.status(400).json({ error: "book_id and month required" });
 
     const { rows: [book] } = await pool.query("SELECT * FROM books WHERE id=$1", [book_id]);
     if (!book) return res.status(404).json({ error: "Book not found" });
 
-    const client = await pool.connect();
-    try {
-      await client.query("BEGIN");
-      await client.query("UPDATE books SET botm_month=NULL");
-      await client.query("UPDATE books SET botm_month=$1 WHERE id=$2", [month, book_id]);
-      await client.query("COMMIT");
-    } catch (e) {
-      await client.query("ROLLBACK");
-      throw e;
-    } finally {
-      client.release();
-    }
+    // Only set botm_month on the newly picked book — previously picked BOTMs
+    // must keep their own botm_month so BOTM history / library badges still show them.
+    await pool.query("UPDATE books SET botm_month=$1 WHERE id=$2", [month, book_id]);
 
     const { rows: genreRows } = await pool.query("SELECT genre FROM book_genres WHERE book_id=$1", [book_id]);
     const genres = genreRows.map(g => g.genre);
 
-    announceBookOfTheMonth({
-      title: book.title, author: book.author, series: book.series,
-      genres, cover_url: book.cover_url, month,
-    }).catch(e => console.error("Discord announce error:", e.message));
+    // Respect the "Post announcement to Discord" checkbox — previously this
+    // fired unconditionally regardless of what the frontend sent.
+    if (announce) {
+      announceBookOfTheMonth({
+        title: book.title, author: book.author, series: book.series,
+        genres, cover_url: book.cover_url, month,
+      }).catch(e => console.error("Discord announce error:", e.message));
+    }
 
-    res.json({ announced: true, month, book_title: book.title });
+    res.json({ announced: !!announce, month, book_title: book.title });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
