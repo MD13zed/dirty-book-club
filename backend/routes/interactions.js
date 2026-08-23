@@ -241,6 +241,21 @@ async function handleDialed(res, options, discordId) {
   const memberId = await getMemberId(discordId);
   if (!memberId) return res.json(err(`You need to log in first: ${SITE_URL}`));
 
+  const { rows: [existing] } = await pool.query(
+    `SELECT score FROM dialed_scores WHERE member_id=$1 AND play_date=CURRENT_DATE`,
+    [memberId]
+  );
+
+  // Only a strictly higher score counts as an improvement — ties and lower
+  // scores leave today's stored best (and the public leaderboard) untouched.
+  if (existing && Number(score) <= Number(existing.score)) {
+    return res.json(reply([embed(
+      "🎨 Not a new best",
+      `Your best today is still **${Number(existing.score).toFixed(2)}** / 50 — the leaderboard wasn't updated since **${Number(score).toFixed(2)}** doesn't beat it.`,
+      color.indigo,
+    )], true));
+  }
+
   await pool.query(
     `INSERT INTO dialed_scores (id, member_id, score, play_date)
      VALUES ($1,$2,$3,CURRENT_DATE)
@@ -258,9 +273,10 @@ async function handleDialed(res, options, discordId) {
   const channelLine = process.env.DIALED_CHANNEL_ID
     ? `\nCheck <#${process.env.DIALED_CHANNEL_ID}> to see where you rank!`
     : "";
+  const improvedNote = existing ? ` — improved from ${Number(existing.score).toFixed(2)}` : "";
   return res.json(reply([embed(
-    "🎨 Score submitted!",
-    `**${Number(score).toFixed(2)}** / 50 logged for today.${channelLine}`,
+    "🎨 New best score!",
+    `**${Number(score).toFixed(2)}** / 50 logged for today${improvedNote}.${channelLine}`,
     color.green,
   )], true)); // ephemeral — only the submitter sees this
 }

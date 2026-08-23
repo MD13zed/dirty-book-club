@@ -4,6 +4,13 @@ All notable changes to The Spicy Shelf are documented here.
 
 ---
 
+## [3.6.1] — 2026-08-23
+
+### Changed
+- **`/dialed` only updates on improvement** — submitting a score no longer overwrites the day's leaderboard entry unless it's strictly higher than the member's existing score for today. Equal or lower scores get an ephemeral "not a new best" reply and the public leaderboard message is left untouched (no unnecessary edit).
+
+---
+
 ## [3.6.0] — 2026-08-23
 
 ### Added
