@@ -116,15 +116,17 @@ async function postMorningLeaderboard() {
   return { ok: true };
 }
 
-// ── Called right after a score submission — edits the live message in place ─
+// ── Called right after a score submission — resends the leaderboard as a
+// fresh message (no role ping, no game reminders). Yesterday's winner is
+// only shown if this is the first leaderboard post of the day — once one
+// has gone out (morning cron or an earlier submission), later resends skip
+// straight to the live standings.
 async function refreshLeaderboardMessage({ lastSubmitterDiscordId, lastSubmitterScore }) {
   if (!CHANNEL_ID) { console.warn("DIALED_CHANNEL_ID not set"); return; }
   const todayStr = new Date().toISOString().slice(0, 10);
   const [today, state] = await Promise.all([getTodayLeaderboard(), getState()]);
   const haveTodayMessage = state && state.board_date === todayStr && state.message_id;
 
-  // Yesterday's winner + game reminders only belong on the once-daily
-  // morning post — on every edit afterwards we just show live standings.
   const yesterdayWinner = haveTodayMessage ? null : await getYesterdayWinner();
   const content = buildContent({
     pingRole: false,
@@ -135,20 +137,17 @@ async function refreshLeaderboardMessage({ lastSubmitterDiscordId, lastSubmitter
     includeReminder: false,
   });
 
-  if (haveTodayMessage) {
-    try {
-      await discordAPI("PATCH", `/channels/${state.channel_id}/messages/${state.message_id}`, { content });
-      return;
-    } catch (e) {
-      console.error("Failed to edit dialed leaderboard message:", e.message);
-    }
-  }
-
-  // No live message for today yet (morning cron hasn't fired) — create one,
-  // no role ping since this isn't the daily announcement.
   const msg = await discordAPI("POST", `/channels/${CHANNEL_ID}/messages`, { content });
   if (msg.id) await saveState(CHANNEL_ID, msg.id, todayStr);
-  else console.error("Dialed fallback post failed:", JSON.stringify(msg));
+  else console.error("Dialed leaderboard resend failed:", JSON.stringify(msg));
 }
 
-module.exports = { postMorningLeaderboard, refreshLeaderboardMessage };
+// ── On-demand pull for `/dialed leaderboard` — always includes yesterday's
+// winner for context since it's a standalone snapshot, not tied to the
+// day's running thread of messages. No role ping, no game reminders.
+async function getLeaderboardSnapshot() {
+  const [today, yesterdayWinner] = await Promise.all([getTodayLeaderboard(), getYesterdayWinner()]);
+  return buildContent({ pingRole: false, yesterdayWinner, today, includeReminder: false });
+}
+
+module.exports = { postMorningLeaderboard, refreshLeaderboardMessage, getLeaderboardSnapshot };

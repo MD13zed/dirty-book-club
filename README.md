@@ -70,7 +70,7 @@ A private book club library for tracking, reviewing, and discussing reads togeth
 ### Themes
 6 dark themes per member: Dark Purple, Midnight, Rose Gold, Dark Forest, Deep Ocean, Blood Moon
 
-### Discord Bot — 12 Slash Commands
+### Discord Bot — 13 Slash Commands
 
 | Command | What it does |
 |---|---|
@@ -86,6 +86,7 @@ A private book club library for tracking, reviewing, and discussing reads togeth
 | `/members` | Everyone in the club with their reading stats. Add `user:@someone` to look up a specific member — shows their currently reading list with progress bars, recent reviews, and favourite genre |
 | `/getting-started` | Full guide to everything you can do — only visible to you |
 | `/dialed score:` | Submit your daily [Dialed.gg](https://dialed.gg) score (0–50) |
+| `/dialed leaderboard` | Pull today's Dialed.gg standings on demand |
 
 ### Mobile
 Installable as a PWA on iOS (Safari → Add to Home Screen) and Android (Chrome → Add to Home Screen)

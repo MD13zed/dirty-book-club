@@ -233,7 +233,7 @@ async function handleReview(res, options, discordId) {
   )]));
 }
 
-async function handleDialed(res, options, discordId) {
+async function handleDialedScore(res, options, discordId) {
   const score = options.find(o => o.name === "score")?.value;
   if (score === undefined || score === null) return res.json(err("Provide your score."));
   if (score < 0 || score > 50) return res.json(err("Score must be between 0 and 50."));
@@ -279,6 +279,23 @@ async function handleDialed(res, options, discordId) {
     `**${Number(score).toFixed(2)}** / 50 logged for today${improvedNote}.${channelLine}`,
     color.green,
   )], true)); // ephemeral — only the submitter sees this
+}
+
+// `/dialed leaderboard` — on-demand pull, visible to everyone in the channel
+// it's run from. Plain content (not an embed) so it renders identically to
+// the live leaderboard message, mentions and all.
+async function handleDialedLeaderboard(res) {
+  const content = await dialed.getLeaderboardSnapshot();
+  return res.json({ type: 4, data: { content } });
+}
+
+// `/dialed` router — dispatches to the `score` or `leaderboard` subcommand
+async function handleDialed(res, options, discordId) {
+  const sub = options[0];
+  if (!sub) return res.json(err("Unknown subcommand."));
+  if (sub.name === "leaderboard") return await handleDialedLeaderboard(res);
+  if (sub.name === "score")       return await handleDialedScore(res, sub.options || [], discordId);
+  return res.json(err("Unknown subcommand."));
 }
 
 async function handleReading(res, options, discordId) {
@@ -620,6 +637,7 @@ function handleGettingStarted(res) {
           "`/members user:@someone` — a specific member's profile and reading list",
           "`/stats` — club-wide reading statistics — books, reviews, pages read, top rated book, most active reader",
           "`/dialed score:` — submit your daily Dialed.gg score",
+          "`/dialed leaderboard` — pull today's Dialed.gg standings on demand",
         ].join("\n"),
         inline: false,
       },

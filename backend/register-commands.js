@@ -108,15 +108,27 @@ const commands = [
   },
   {
     name:        "dialed",
-    description: "Submit your daily Dialed.gg score 🎨",
-    options: [{
-      name:        "score",
-      description: "Your score out of 50 (e.g. 44.75)",
-      type:        10,      // NUMBER
-      required:    true,
-      min_value:   0,
-      max_value:   50,
-    }],
+    description: "Dialed.gg daily score tracking 🎨",
+    options: [
+      {
+        name:        "score",
+        description: "Submit your daily Dialed.gg score 🎨",
+        type:        1,       // SUB_COMMAND
+        options: [{
+          name:        "score",
+          description: "Your score out of 50 (e.g. 44.75)",
+          type:        10,    // NUMBER
+          required:    true,
+          min_value:   0,
+          max_value:   50,
+        }],
+      },
+      {
+        name:        "leaderboard",
+        description: "Pull today's Dialed.gg leaderboard 🏆",
+        type:        1,       // SUB_COMMAND
+      },
+    ],
   },
 ];
 

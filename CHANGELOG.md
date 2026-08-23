@@ -4,6 +4,16 @@ All notable changes to The Spicy Shelf are documented here.
 
 ---
 
+## [3.6.2] — 2026-08-23
+
+### Added
+- **`/dialed leaderboard` subcommand** — pulls a live snapshot of today's standings (plus yesterday's winner) on demand, visible to whoever ran it. `/dialed` now has two subcommands: `score` and `leaderboard`.
+
+### Changed
+- **Score submissions resend instead of edit** — after a score is submitted or improved, a brand-new leaderboard-only message is posted rather than silently editing the previous one, so the update is visible in the channel as it happens. Still no role ping and no game reminders on these — those stay exclusive to the once-daily morning post.
+
+---
+
 ## [3.6.1] — 2026-08-23
 
 ### Changed
