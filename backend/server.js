@@ -33,6 +33,7 @@ app.use("/api/nominations",   require("./routes/nominations"));
 app.use("/api/reading-now",   require("./routes/reading-now"));
 app.use("/api/digest",        require("./routes/digest"));
 app.use("/api/yearend",       require("./routes/yearend"));
+app.use("/api/dialed-morning", require("./routes/dialed-morning"));
 
 // Warm-up / liveness ping. DB-free on purpose: it keeps the Vercel function
 // warm (which is what the prefill search needs) without waking Neon, so the

@@ -4,6 +4,21 @@ All notable changes to The Spicy Shelf are documented here.
 
 ---
 
+## [3.6.0] — 2026-08-23
+
+### Added
+- **`/dialed` Discord command** — submit your daily [Dialed.gg](https://dialed.gg) score (0–50, decimals allowed). One score per member per day; resubmitting updates it.
+- **Live Dialed.gg leaderboard** — submitting a score instantly edits a shared leaderboard message in `DIALED_CHANNEL_ID` (top 5 + current leader). Only the submitter is mentioned ("Just submitted: @you") — no role-wide ping on every score.
+- **Daily Dialed.gg morning post** — new `GET /api/dialed-morning` cron endpoint (same `CRON_SECRET` header pattern as the weekly digest). Once a day it pings `DISCORD_ROLE_GAME_ON`, announces yesterday's winner, resets the leaderboard to TBD, and reminds the club to play Dialed.gg, Wordle, and the Daily Word Wheel — with clickable links. Wordle and Daily Word Wheel link straight into their Discord Activity via shortcut links (`discord.com/activities/<id>`); Dialed.gg links out to the website since it has no Discord activity.
+- New tables: `dialed_scores`, `dialed_leaderboard_state` — see `backend/db/v4_migration.sql`.
+- New env vars: `DIALED_CHANNEL_ID`, `DISCORD_ROLE_GAME_ON`.
+
+### Notes
+- Requires re-running `node register-commands.js` from the backend directory after deploying.
+- Add a new cron-job.org job hitting `GET https://<your-backend>/api/dialed-morning` with header `Authorization: Bearer <CRON_SECRET>`, scheduled once each morning. Note Neon's `CURRENT_DATE` is UTC, so "today"/"yesterday" flip at UTC midnight — pick the cron time with that in mind.
+
+---
+
 ## [3.4.1] — 2026-07-04
 
 ### Fixed

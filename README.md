@@ -70,13 +70,14 @@ A private book club library for tracking, reviewing, and discussing reads togeth
 ### Themes
 6 dark themes per member: Dark Purple, Midnight, Rose Gold, Dark Forest, Deep Ocean, Blood Moon
 
-### Discord Bot — 11 Slash Commands
+### Discord Bot — 12 Slash Commands
 
 | Command | What it does |
 |---|---|
 | `/shelf` | Shows the 5 most recently added books |
 | `/botm` | Shows the current Book of the Month |
-| `/stats` | Club stats — books, reviews, members, avg rating, total pages read, top rated book, most reviewed book, most active reader this month || `/search title:` | Search the library by title |
+| `/stats` | Club stats — books, reviews, members, avg rating, total pages read, top rated book, most reviewed book, most active reader this month |
+| `/search title:` | Search the library by title |
 | `/review title: rating: notes:` | Submit or update a review |
 | `/reading title: status: page:` | Update reading progress |
 | `/myshelf` | See your full reading list, filterable by status |
@@ -84,6 +85,7 @@ A private book club library for tracking, reviewing, and discussing reads togeth
 | `/leaderboard` | Who has read the most books and left the most reviews |
 | `/members` | Everyone in the club with their reading stats. Add `user:@someone` to look up a specific member — shows their currently reading list with progress bars, recent reviews, and favourite genre |
 | `/getting-started` | Full guide to everything you can do — only visible to you |
+| `/dialed score:` | Submit your daily [Dialed.gg](https://dialed.gg) score (0–50) |
 
 ### Mobile
 Installable as a PWA on iOS (Safari → Add to Home Screen) and Android (Chrome → Add to Home Screen)
@@ -147,6 +149,8 @@ nomination_votes  — one vote per member per nomination
 | `CRON_SECRET` | Bearer token required to call `/api/digest` and `/api/yearend` |
 | `FRONTEND_URL` | Frontend deployment URL |
 | `API_URL` | Backend deployment URL |
+| `DIALED_CHANNEL_ID` | Channel where the daily Dialed.gg leaderboard message lives |
+| `DISCORD_ROLE_GAME_ON` | Role pinged once each morning to announce yesterday's Dialed.gg winner and remind the club to play |
 
 ### Frontend (Vercel)
 

@@ -106,6 +106,18 @@ const commands = [
     name:        "getting-started",
     description: "A full guide to everything you can do on The Spicy Shelf 🔥",
   },
+  {
+    name:        "dialed",
+    description: "Submit your daily Dialed.gg score 🎨",
+    options: [{
+      name:        "score",
+      description: "Your score out of 50 (e.g. 44.75)",
+      type:        10,      // NUMBER
+      required:    true,
+      min_value:   0,
+      max_value:   50,
+    }],
+  },
 ];
 
 const path = GUILD

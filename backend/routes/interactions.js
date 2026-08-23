@@ -2,6 +2,7 @@ const router = require("express").Router();
 const { verifyKey } = require("discord-interactions");
 const pool = require("../db/pool");
 const { v4: uuidv4 } = require("uuid");
+const dialed = require("../dialed");
 
 const SITE_URL = process.env.FRONTEND_URL || "https://thespicyshelf.vercel.app";
 
@@ -230,6 +231,38 @@ async function handleReview(res, options, discordId) {
     [`**${book.title}**`, `${"⭐".repeat(rating)}`, notes?`*"${notes}"*`:""].filter(Boolean).join("\n"),
     color.green, [], book.cover_url||null,
   )]));
+}
+
+async function handleDialed(res, options, discordId) {
+  const score = options.find(o => o.name === "score")?.value;
+  if (score === undefined || score === null) return res.json(err("Provide your score."));
+  if (score < 0 || score > 50) return res.json(err("Score must be between 0 and 50."));
+
+  const memberId = await getMemberId(discordId);
+  if (!memberId) return res.json(err(`You need to log in first: ${SITE_URL}`));
+
+  await pool.query(
+    `INSERT INTO dialed_scores (id, member_id, score, play_date)
+     VALUES ($1,$2,$3,CURRENT_DATE)
+     ON CONFLICT (member_id, play_date) DO UPDATE SET
+       score=EXCLUDED.score, submitted_at=CURRENT_TIMESTAMP`,
+    [uuidv4(), memberId, score]
+  );
+
+  // Fire-and-forget — updates the shared leaderboard message.
+  // Does not block the interaction reply, and its own errors are caught
+  // internally so a Discord hiccup here never surfaces as a failed command.
+  dialed.refreshLeaderboardMessage({ lastSubmitterDiscordId: discordId, lastSubmitterScore: score })
+    .catch(e => console.error("Dialed leaderboard refresh failed:", e.message));
+
+  const channelLine = process.env.DIALED_CHANNEL_ID
+    ? `\nCheck <#${process.env.DIALED_CHANNEL_ID}> to see where you rank!`
+    : "";
+  return res.json(reply([embed(
+    "🎨 Score submitted!",
+    `**${Number(score).toFixed(2)}** / 50 logged for today.${channelLine}`,
+    color.green,
+  )], true)); // ephemeral — only the submitter sees this
 }
 
 async function handleReading(res, options, discordId) {
@@ -570,6 +603,7 @@ function handleGettingStarted(res) {
           "`/members` — everyone in the club with their stats",
           "`/members user:@someone` — a specific member's profile and reading list",
           "`/stats` — club-wide reading statistics — books, reviews, pages read, top rated book, most active reader",
+          "`/dialed score:` — submit your daily Dialed.gg score",
         ].join("\n"),
         inline: false,
       },
@@ -611,6 +645,7 @@ router.post("/", verify, async (req, res) => {
         case "leaderboard":      return await handleLeaderboard(res);
         case "members":          return await handleMembers(res, options);
         case "getting-started":  return handleGettingStarted(res);
+        case "dialed":           return await handleDialed(res, options, discordId);
         default:                 return res.json(err("Unknown command."));
       }
     }

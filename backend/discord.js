@@ -137,4 +137,4 @@ async function postTbrPoll({ books, duration_hours = 48 }) {
   });
 }
 
-module.exports = { notifyBookAdded, notifyReviewLeft, announceBookOfTheMonth, postTbrPoll };
+module.exports = { notifyBookAdded, notifyReviewLeft, announceBookOfTheMonth, postTbrPoll, discordAPI };
