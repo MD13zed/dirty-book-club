@@ -116,13 +116,18 @@ async function postMorningLeaderboard() {
   return { ok: true };
 }
 
-// ── Called right after a score submission — resends the leaderboard as a
-// fresh message (no role ping, no game reminders). Yesterday's winner is
+// ── Called right after a score submission — edits the shared leaderboard
+// message in place (no role ping, no game reminders). Yesterday's winner is
 // only shown if this is the first leaderboard post of the day — once one
-// has gone out (morning cron or an earlier submission), later resends skip
-// straight to the live standings.
+// exists (morning cron or an earlier submission), later edits skip straight
+// to live standings. Always resolves to { ok, channelId, messageId } on
+// success, or { ok:false, error, code } on failure — callers must check
+// `ok` rather than assume a truthy return means it worked.
 async function refreshLeaderboardMessage({ lastSubmitterDiscordId, lastSubmitterScore }) {
-  if (!CHANNEL_ID) { console.warn("DIALED_CHANNEL_ID not set"); return; }
+  if (!CHANNEL_ID) {
+    console.warn("DIALED_CHANNEL_ID not set — leaderboard message not updated.");
+    return { ok: false, error: "DIALED_CHANNEL_ID not configured" };
+  }
   const todayStr = new Date().toISOString().slice(0, 10);
   const [today, state] = await Promise.all([getTodayLeaderboard(), getState()]);
   const haveTodayMessage = state && state.board_date === todayStr && state.message_id;
@@ -137,9 +142,23 @@ async function refreshLeaderboardMessage({ lastSubmitterDiscordId, lastSubmitter
     includeReminder: false,
   });
 
+  if (haveTodayMessage) {
+    const edited = await discordAPI("PATCH", `/channels/${state.channel_id}/messages/${state.message_id}`, { content });
+    if (edited && edited.id) {
+      return { ok: true, channelId: state.channel_id, messageId: state.message_id };
+    }
+    // Edit failed (message deleted, permissions changed, etc.) — fall
+    // through and post a fresh one below rather than losing the update.
+    console.warn("Dialed leaderboard edit failed, posting a new message instead:", JSON.stringify(edited));
+  }
+
   const msg = await discordAPI("POST", `/channels/${CHANNEL_ID}/messages`, { content });
-  if (msg.id) await saveState(CHANNEL_ID, msg.id, todayStr);
-  else console.error("Dialed leaderboard resend failed:", JSON.stringify(msg));
+  if (msg && msg.id) {
+    await saveState(CHANNEL_ID, msg.id, todayStr);
+    return { ok: true, channelId: CHANNEL_ID, messageId: msg.id };
+  }
+  console.error("Dialed leaderboard post failed — Discord API response:", JSON.stringify(msg));
+  return { ok: false, error: msg?.message || "Unknown Discord API error", code: msg?.code };
 }
 
 // ── On-demand pull for `/dialed leaderboard` — always includes yesterday's

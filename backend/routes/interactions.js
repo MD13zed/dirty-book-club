@@ -233,7 +233,7 @@ async function handleReview(res, options, discordId) {
   )]));
 }
 
-async function handleDialedScore(res, options, discordId) {
+async function handleDialedScore(res, options, discordId, guildId) {
   const score = options.find(o => o.name === "score")?.value;
   if (score === undefined || score === null) return res.json(err("Provide your score."));
   if (score < 0 || score > 50) return res.json(err("Score must be between 0 and 50."));
@@ -264,15 +264,34 @@ async function handleDialedScore(res, options, discordId) {
     [uuidv4(), memberId, score]
   );
 
-  // Fire-and-forget — updates the shared leaderboard message.
-  // Does not block the interaction reply, and its own errors are caught
-  // internally so a Discord hiccup here never surfaces as a failed command.
-  dialed.refreshLeaderboardMessage({ lastSubmitterDiscordId: discordId, lastSubmitterScore: score })
-    .catch(e => console.error("Dialed leaderboard refresh failed:", e.message));
+  // Awaited (not fire-and-forget) — we need the edited message's location to
+  // link straight to it below. This is a single Discord API call so it stays
+  // comfortably within the 3-second interaction response window.
+  let board = { ok: false, error: "not attempted" };
+  try {
+    board = await dialed.refreshLeaderboardMessage({ lastSubmitterDiscordId: discordId, lastSubmitterScore: score });
+  } catch (e) {
+    console.error("Dialed leaderboard refresh threw:", e.message);
+    board = { ok: false, error: e.message };
+  }
 
-  const channelLine = process.env.DIALED_CHANNEL_ID
-    ? `\nCheck <#${process.env.DIALED_CHANNEL_ID}> to see where you rank!`
-    : "";
+  let channelLine;
+  if (board.ok && guildId) {
+    const link = `https://discord.com/channels/${guildId}/${board.channelId}/${board.messageId}`;
+    channelLine = `\n[Check the leaderboard to see where you stand!](${link})`;
+  } else if (board.ok) {
+    // No guild_id on the interaction (shouldn't normally happen for a
+    // guild-only command) — fall back to a plain channel mention.
+    channelLine = `\nCheck <#${board.channelId}> to see where you rank!`;
+  } else {
+    // Be honest instead of showing a link that goes nowhere useful — this
+    // surfaces the real Discord error so it's visible without digging
+    // through Vercel logs. Common causes: DIALED_CHANNEL_ID unset/wrong, or
+    // the bot lacks View Channel / Send Messages permission in that channel.
+    console.error(`Dialed leaderboard update failed for ${discordId}:`, board.error, board.code || "");
+    channelLine = `\n⚠️ *Your score was saved, but the public leaderboard couldn't be updated (${board.error}). Let an admin know.*`;
+  }
+
   const improvedNote = existing ? ` — improved from ${Number(existing.score).toFixed(2)}` : "";
   return res.json(reply([embed(
     "🎨 New best score!",
@@ -290,11 +309,11 @@ async function handleDialedLeaderboard(res) {
 }
 
 // `/dialed` router — dispatches to the `score` or `leaderboard` subcommand
-async function handleDialed(res, options, discordId) {
+async function handleDialed(res, options, discordId, guildId) {
   const sub = options[0];
   if (!sub) return res.json(err("Unknown subcommand."));
   if (sub.name === "leaderboard") return await handleDialedLeaderboard(res);
-  if (sub.name === "score")       return await handleDialedScore(res, sub.options || [], discordId);
+  if (sub.name === "score")       return await handleDialedScore(res, sub.options || [], discordId, guildId);
   return res.json(err("Unknown subcommand."));
 }
 
@@ -660,7 +679,7 @@ function handleGettingStarted(res) {
 // ── Router ────────────────────────────────────────────────────────────────────
 router.post("/", verify, async (req, res) => {
   try {
-    const { type, data, member, user } = req.interaction;
+    const { type, data, member, user, guild_id } = req.interaction;
     const discordId = (member?.user || user)?.id;
 
     if (type === 1) return res.json({ type:1 });
@@ -679,7 +698,7 @@ router.post("/", verify, async (req, res) => {
         case "leaderboard":      return await handleLeaderboard(res);
         case "members":          return await handleMembers(res, options);
         case "getting-started":  return handleGettingStarted(res);
-        case "dialed":           return await handleDialed(res, options, discordId);
+        case "dialed":           return await handleDialed(res, options, discordId, guild_id);
         default:                 return res.json(err("Unknown command."));
       }
     }
