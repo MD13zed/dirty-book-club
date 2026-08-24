@@ -16,28 +16,49 @@ const WORD_WHEEL_URL         = `https://discord.com/activities/${WORD_WHEEL_ACTI
 
 const MEDALS = ["🥇","🥈","🥉","4️⃣","5️⃣"];
 
-function fmtDate(d) {
-  return d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+// Dialed leaderboard day is based on Eastern Time, not the server/UTC date.
+// Override with DIALED_TIMEZONE if the deployment ever needs another zone.
+const DIALED_TIMEZONE = process.env.DIALED_TIMEZONE || "America/New_York";
+
+function getDialedDate() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: DIALED_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 }
 
-async function getTodayLeaderboard() {
+function fmtDate(dateStr = getDialedDate()) {
+  // dateStr is YYYY-MM-DD; format it without allowing the server timezone
+  // to shift the displayed calendar date.
+  const [year, month, day] = dateStr.split("-").map(Number);
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(year, month - 1, day)));
+}
+
+async function getTodayLeaderboard(todayStr = getDialedDate()) {
   const { rows } = await pool.query(`
     SELECT m.discord_id, m.display_name, m.username, ds.score
     FROM dialed_scores ds JOIN members m ON m.id = ds.member_id
-    WHERE ds.play_date = CURRENT_DATE
+    WHERE ds.play_date = $1::date
     ORDER BY ds.score DESC
     LIMIT 5
-  `);
+  `, [todayStr]);
   return rows;
 }
 
-async function getYesterdayWinner() {
+async function getYesterdayWinner(todayStr = getDialedDate()) {
   const { rows: [w] } = await pool.query(`
     SELECT m.discord_id, ds.score
     FROM dialed_scores ds JOIN members m ON m.id = ds.member_id
-    WHERE ds.play_date = CURRENT_DATE - INTERVAL '1 day'
+    WHERE ds.play_date = ($1::date - 1)
     ORDER BY ds.score DESC LIMIT 1
-  `);
+  `, [todayStr]);
   return w || null;
 }
 
@@ -53,7 +74,7 @@ function buildContent({ pingRole, yesterdayWinner, today, lastSubmitterDiscordId
   }
   lines.push("━━━━━━━━━━━━━━━");
   lines.push("🎨 **TODAY'S LEADERBOARD**");
-  lines.push(`*${fmtDate(new Date())}*`);
+  lines.push(`*${fmtDate()}*`);
   for (let i = 0; i < 5; i++) {
     const entry = today[i];
     if (entry) {
@@ -100,7 +121,8 @@ async function saveState(channel_id, message_id, board_date) {
 // ── Morning post — the ONE role ping per day, plus reset + game reminders ──
 async function postMorningLeaderboard() {
   if (!CHANNEL_ID) { console.warn("DIALED_CHANNEL_ID not set"); return { ok: false }; }
-  const yesterdayWinner = await getYesterdayWinner();
+  const todayStr = getDialedDate();
+  const yesterdayWinner = await getYesterdayWinner(todayStr);
 
   const content = buildContent({
     pingRole: true,
@@ -112,7 +134,7 @@ async function postMorningLeaderboard() {
   const msg = await discordAPI("POST", `/channels/${CHANNEL_ID}/messages`, { content });
   if (!msg.id) { console.error("Dialed morning post failed:", JSON.stringify(msg)); return { ok: false }; }
 
-  await saveState(CHANNEL_ID, msg.id, new Date().toISOString().slice(0, 10));
+  await saveState(CHANNEL_ID, msg.id, todayStr);
   return { ok: true };
 }
 
@@ -128,11 +150,11 @@ async function refreshLeaderboardMessage({ lastSubmitterDiscordId, lastSubmitter
     console.warn("DIALED_CHANNEL_ID not set — leaderboard message not updated.");
     return { ok: false, error: "DIALED_CHANNEL_ID not configured" };
   }
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const [today, state] = await Promise.all([getTodayLeaderboard(), getState()]);
-  const haveTodayMessage = state && state.board_date === todayStr && state.message_id;
+  const todayStr = getDialedDate();
+  const [today, state] = await Promise.all([getTodayLeaderboard(todayStr), getState()]);
+  const haveTodayMessage = state && String(state.board_date).slice(0, 10) === todayStr && state.message_id;
 
-  const yesterdayWinner = haveTodayMessage ? null : await getYesterdayWinner();
+  const yesterdayWinner = haveTodayMessage ? null : await getYesterdayWinner(todayStr);
   const content = buildContent({
     pingRole: false,
     yesterdayWinner,
@@ -165,7 +187,11 @@ async function refreshLeaderboardMessage({ lastSubmitterDiscordId, lastSubmitter
 // winner for context since it's a standalone snapshot, not tied to the
 // day's running thread of messages. No role ping, no game reminders.
 async function getLeaderboardSnapshot() {
-  const [today, yesterdayWinner] = await Promise.all([getTodayLeaderboard(), getYesterdayWinner()]);
+  const todayStr = getDialedDate();
+  const [today, yesterdayWinner] = await Promise.all([
+    getTodayLeaderboard(todayStr),
+    getYesterdayWinner(todayStr),
+  ]);
   return buildContent({ pingRole: false, yesterdayWinner, today, includeReminder: false });
 }
 

@@ -4,6 +4,21 @@ All notable changes to The Spicy Shelf are documented here.
 
 ---
 
+## [3.6.4] — 2026-08-23
+
+### Fixed
+- **`/dialed score:` no longer hides leaderboard update failures.** Previously, if editing or posting the public leaderboard message failed (bad channel ID, missing bot permissions, etc.), the confirmation reply still showed a "check the leaderboard" link/mention that pointed nowhere real — masking the failure. It now checks the actual result and, on failure, tells the submitter plainly that the leaderboard couldn't be updated and logs the real Discord API error (message + error code) server-side for debugging.
+
+---
+
+## [3.6.3] — 2026-08-23
+
+### Changed
+- **Score submissions edit the daily leaderboard message again** instead of posting a new one each time — reverted from the previous "resend" behavior back to an in-place edit. Still no role ping and no game reminders on these. If the stored message was deleted or can no longer be edited, it falls back to posting a fresh one automatically.
+- **"Check the leaderboard" is now a real link** — the confirmation reply after submitting a score links directly to the exact leaderboard message (jumps straight there when tapped) instead of just mentioning the channel.
+
+---
+
 ## [3.6.2] — 2026-08-23
 
 ### Added

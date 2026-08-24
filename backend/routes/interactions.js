@@ -4,6 +4,17 @@ const pool = require("../db/pool");
 const { v4: uuidv4 } = require("uuid");
 const dialed = require("../dialed");
 
+const DIALED_TIMEZONE = process.env.DIALED_TIMEZONE || "America/New_York";
+
+function getDialedDate() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: DIALED_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
 const SITE_URL = process.env.FRONTEND_URL || "https://thespicyshelf.vercel.app";
 
 // ── Signature verification ────────────────────────────────────────────────────
@@ -241,9 +252,13 @@ async function handleDialedScore(res, options, discordId, guildId) {
   const memberId = await getMemberId(discordId);
   if (!memberId) return res.json(err(`You need to log in first: ${SITE_URL}`));
 
+  // Use the same Eastern calendar date as the leaderboard. Do not use
+  // PostgreSQL CURRENT_DATE here because the DB/session may be UTC.
+  const playDate = getDialedDate();
+
   const { rows: [existing] } = await pool.query(
-    `SELECT score FROM dialed_scores WHERE member_id=$1 AND play_date=CURRENT_DATE`,
-    [memberId]
+    `SELECT score FROM dialed_scores WHERE member_id=$1 AND play_date=$2::date`,
+    [memberId, playDate]
   );
 
   // Only a strictly higher score counts as an improvement — ties and lower
@@ -258,10 +273,10 @@ async function handleDialedScore(res, options, discordId, guildId) {
 
   await pool.query(
     `INSERT INTO dialed_scores (id, member_id, score, play_date)
-     VALUES ($1,$2,$3,CURRENT_DATE)
+     VALUES ($1,$2,$3,$4::date)
      ON CONFLICT (member_id, play_date) DO UPDATE SET
        score=EXCLUDED.score, submitted_at=CURRENT_TIMESTAMP`,
-    [uuidv4(), memberId, score]
+    [uuidv4(), memberId, score, playDate]
   );
 
   // Awaited (not fire-and-forget) — we need the edited message's location to

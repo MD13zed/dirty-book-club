@@ -1,33 +1,25 @@
-# Dialed.gg — Resend Behavior + Leaderboard Pull Command
+# Dialed.gg — Edit-in-place + Direct Message Link
 
 ## What changed
-1. **Score submissions now resend, not edit.** When someone submits a new best score, a fresh message with just the leaderboard (no role ping, no game reminders) posts to `DIALED_CHANNEL_ID`. The old behavior silently edited the previous message in place — this makes each update visible as it happens.
-2. **New `/dialed leaderboard` subcommand.** Anyone can run this to pull a snapshot of today's standings (plus yesterday's winner) on demand, in whatever channel they run it from.
-3. `/dialed` is now two subcommands instead of one flat command: `/dialed score:` and `/dialed leaderboard`.
+1. **Back to editing in place.** Submitting/improving a score now edits the existing daily leaderboard message instead of posting a new one each time (this reverts the "resend" behavior from the previous round). If that message was deleted or the edit fails for any reason, it automatically falls back to posting a fresh one so nothing is lost.
+2. **Real clickable link to the leaderboard.** The ephemeral confirmation after `/dialed score:` now says "Check the leaderboard to see where you stand!" as a link that jumps straight to the exact edited message — not just a channel mention. This uses Discord's message-link format (`discord.com/channels/<guild>/<channel>/<message>`), built from the interaction's own `guild_id` — no new config needed.
 
 ## Files in this package
 - `backend/dialed.js` — replace
 - `backend/routes/interactions.js` — replace
-- `backend/register-commands.js` — replace
 - `CHANGELOG.md` — replace
-- `README.md` — replace
 
-No database migration, no new env vars, no cron changes.
+No database migration, no new env vars, **no need to re-run `register-commands.js`** — the command shape (`/dialed score:` / `/dialed leaderboard`) hasn't changed, only the internal logic.
 
 ## Steps
-1. Drag these 5 files into your project, overwriting the existing ones.
+1. Drag these 3 files into your project, overwriting the existing ones.
 2. Commit and push:
    ```
    git add .
-   git commit -m "resend Dialed.gg leaderboard on submit, add /dialed leaderboard pull command"
+   git commit -m "edit Dialed.gg leaderboard in place, link submitters straight to it"
    git push origin master
    ```
-3. **Re-register commands** — this one matters this time, since `/dialed`'s shape changed from a flat command to subcommands:
-   ```
-   cd backend
-   node register-commands.js
-   ```
-4. Test:
-   - `/dialed score: <value>` — should behave as before (only updates on improvement), but now posts a *new* leaderboard message instead of editing the old one, and it won't ping the role or show the game reminders.
-   - `/dialed leaderboard` — should reply with today's standings, visible to everyone in the channel it's run from, no role ping.
-   - The morning cron post (`/api/dialed-morning`) is unaffected — still pings the role once a day with yesterday's winner, the reset board, and the game reminders.
+3. Test:
+   - `/dialed score: <value>` — the leaderboard message in `DIALED_CHANNEL_ID` should update in place (same message, no new post), and your ephemeral reply should contain a clickable "Check the leaderboard to see where you stand!" link that jumps directly to it.
+   - Submit again with a higher score — same message keeps getting edited, doesn't spawn new ones.
+   - `/dialed leaderboard` — unaffected, still a standalone on-demand pull.
