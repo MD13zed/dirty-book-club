@@ -114,14 +114,22 @@ const commands = [
         name:        "score",
         description: "Submit your daily Dialed.gg score 🎨",
         type:        1,       // SUB_COMMAND
-        options: [{
-          name:        "score",
-          description: "Your score out of 50 (e.g. 44.75)",
-          type:        10,    // NUMBER
-          required:    true,
-          min_value:   0,
-          max_value:   50,
-        }],
+        options: [
+          {
+            name:        "score",
+            description: "Score out of 50 (e.g. 44.75)",
+            type:        10,    // NUMBER
+            required:    true,
+            min_value:   0,
+            max_value:   50,
+          },
+          {
+            name:        "user",
+            description: "Member to record the score for (admins only)",
+            type:        6,     // USER
+            required:    false,
+          },
+        ],
       },
       {
         name:        "leaderboard",

@@ -246,11 +246,31 @@ async function handleReview(res, options, discordId) {
 
 async function handleDialedScore(res, options, discordId, guildId) {
   const score = options.find(o => o.name === "score")?.value;
-  if (score === undefined || score === null) return res.json(err("Provide your score."));
+  const targetDiscordId = options.find(o => o.name === "user")?.value || discordId;
+
+  if (score === undefined || score === null) return res.json(err("Provide the score."));
   if (score < 0 || score > 50) return res.json(err("Score must be between 0 and 50."));
 
-  const memberId = await getMemberId(discordId);
-  if (!memberId) return res.json(err(`You need to log in first: ${SITE_URL}`));
+  // By default, /dialed score records the score for whoever ran the command.
+  // Recording a score for another member is intentionally admin-only.
+  if (targetDiscordId !== discordId) {
+    const { rows: [admin] } = await pool.query(
+      `SELECT is_admin FROM members WHERE discord_id = $1`,
+      [discordId]
+    );
+    if (!admin?.is_admin) {
+      return res.json(err("Only club admins can record a Dialed.gg score for another member."));
+    }
+  }
+
+  const memberId = await getMemberId(targetDiscordId);
+  if (!memberId) {
+    return res.json(err(
+      targetDiscordId === discordId
+        ? `You need to log in first: ${SITE_URL}`
+        : "That member hasn't joined The Spicy Shelf yet."
+    ));
+  }
 
   // Use the same Eastern calendar date as the leaderboard. Do not use
   // PostgreSQL CURRENT_DATE here because the DB/session may be UTC.
@@ -264,9 +284,10 @@ async function handleDialedScore(res, options, discordId, guildId) {
   // Only a strictly higher score counts as an improvement — ties and lower
   // scores leave today's stored best (and the public leaderboard) untouched.
   if (existing && Number(score) <= Number(existing.score)) {
+    const targetName = targetDiscordId === discordId ? "Your" : `<@${targetDiscordId}>'s`;
     return res.json(reply([embed(
       "🎨 Not a new best",
-      `Your best today is still **${Number(existing.score).toFixed(2)}** / 50 — the leaderboard wasn't updated since **${Number(score).toFixed(2)}** doesn't beat it.`,
+      `${targetName} best today is still **${Number(existing.score).toFixed(2)}** / 50 — the leaderboard wasn't updated since **${Number(score).toFixed(2)}** doesn't beat it.`,
       color.indigo,
     )], true));
   }
@@ -279,12 +300,14 @@ async function handleDialedScore(res, options, discordId, guildId) {
     [uuidv4(), memberId, score, playDate]
   );
 
-  // Awaited (not fire-and-forget) — we need the edited message's location to
-  // link straight to it below. This is a single Discord API call so it stays
-  // comfortably within the 3-second interaction response window.
+  // Show the actual member whose score was recorded in the leaderboard's
+  // "Just submitted" line, not the admin who entered it.
   let board = { ok: false, error: "not attempted" };
   try {
-    board = await dialed.refreshLeaderboardMessage({ lastSubmitterDiscordId: discordId, lastSubmitterScore: score });
+    board = await dialed.refreshLeaderboardMessage({
+      lastSubmitterDiscordId: targetDiscordId,
+      lastSubmitterScore: score
+    });
   } catch (e) {
     console.error("Dialed leaderboard refresh threw:", e.message);
     board = { ok: false, error: e.message };
@@ -293,26 +316,22 @@ async function handleDialedScore(res, options, discordId, guildId) {
   let channelLine;
   if (board.ok && guildId) {
     const link = `https://discord.com/channels/${guildId}/${board.channelId}/${board.messageId}`;
-    channelLine = `\n[Check the leaderboard to see where you stand!](${link})`;
+    channelLine = `\n[Check the leaderboard to see where they stand!](${link})`;
   } else if (board.ok) {
-    // No guild_id on the interaction (shouldn't normally happen for a
-    // guild-only command) — fall back to a plain channel mention.
-    channelLine = `\nCheck <#${board.channelId}> to see where you rank!`;
+    channelLine = `\nCheck <#${board.channelId}> to see where they rank!`;
   } else {
-    // Be honest instead of showing a link that goes nowhere useful — this
-    // surfaces the real Discord error so it's visible without digging
-    // through Vercel logs. Common causes: DIALED_CHANNEL_ID unset/wrong, or
-    // the bot lacks View Channel / Send Messages permission in that channel.
-    console.error(`Dialed leaderboard update failed for ${discordId}:`, board.error, board.code || "");
-    channelLine = `\n⚠️ *Your score was saved, but the public leaderboard couldn't be updated (${board.error}). Let an admin know.*`;
+    console.error(`Dialed leaderboard update failed for ${targetDiscordId}:`, board.error, board.code || "");
+    channelLine = `\n⚠️ *The score was saved, but the public leaderboard couldn't be updated (${board.error}). Let an admin know.*`;
   }
 
   const improvedNote = existing ? ` — improved from ${Number(existing.score).toFixed(2)}` : "";
+  const targetLabel = targetDiscordId === discordId ? "Your" : `<@${targetDiscordId}>'s`;
+
   return res.json(reply([embed(
     "🎨 New best score!",
-    `**${Number(score).toFixed(2)}** / 50 logged for today${improvedNote}.${channelLine}`,
+    `${targetLabel} score **${Number(score).toFixed(2)}** / 50 logged for today${improvedNote}.${channelLine}`,
     color.green,
-  )], true)); // ephemeral — only the submitter sees this
+  )], true));
 }
 
 // `/dialed leaderboard` — on-demand pull, visible to everyone in the channel
