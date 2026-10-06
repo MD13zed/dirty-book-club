@@ -4,6 +4,20 @@ All notable changes to The Spicy Shelf are documented here.
 
 ---
 
+## [3.6.5] — 2026-10-06
+
+### Changed
+- **Morning Dialed.gg post is now a quiet reminder.** `GET /api/dialed-morning` no longer pings the `@game on` role and no longer posts a leaderboard — it just posts the game links (Dialed.gg, Wordle, Daily Word Wheel) with a nudge to play. Posts use `allowed_mentions: { parse: [] }` so nothing pings.
+- **Score submissions no longer post or edit a leaderboard.** `/dialed score:` just records the score and replies privately to the submitter.
+
+### Added
+- **End-of-day final leaderboard** — new `GET /api/dialed-evening` cron endpoint (same `CRON_SECRET` header pattern). Posts the day's final top 5 and winner once, with no pings. Schedule it in cron-job.org (timezone America/New_York) before midnight ET so it lands on the right Dialed date.
+
+### Removed
+- Leaderboard message editing/reposting (`refreshLeaderboardMessage`) and the role ping. `DISCORD_ROLE_GAME_ON` is no longer used.
+
+---
+
 ## [3.6.4] — 2026-08-23
 
 ### Fixed

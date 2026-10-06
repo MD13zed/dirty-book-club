@@ -1,9 +1,8 @@
-// Dialed.gg daily score tracking — builds/posts/edits the shared leaderboard message
+// Dialed.gg daily score tracking — morning game reminder (no pings), end-of-day final leaderboard, and on-demand snapshot
 const pool = require("./db/pool");
 const { discordAPI } = require("./discord");
 
 const CHANNEL_ID = process.env.DIALED_CHANNEL_ID;
-const ROLE_ID    = process.env.DISCORD_ROLE_GAME_ON || "1506106813366407238";
 const DIALED_URL = "https://dialed.gg";
 
 // Discord "activity shortcut links" — clicking these launches the activity
@@ -62,18 +61,24 @@ async function getYesterdayWinner(todayStr = getDialedDate()) {
   return w || null;
 }
 
-function buildContent({ pingRole, yesterdayWinner, today, lastSubmitterDiscordId, lastSubmitterScore, includeReminder }) {
+// Never ping anyone from bot posts — <@id> mentions still render as names.
+const NO_PINGS = { parse: [] };
+
+function buildContent({ yesterdayWinner, today, final = false }) {
   const lines = [];
-  if (pingRole) lines.push(`<@&${ROLE_ID}>`);
-  lines.push("🏆 **🎨 [DIALED.GG](https://dialed.gg) — DAILY RESULTS**");
-  if (yesterdayWinner) {
-    lines.push(`🎉 **Yesterday's Winner:** <@${yesterdayWinner.discord_id}>    — **${Number(yesterdayWinner.score).toFixed(2)}** / 50 🎉`);
-    lines.push("*gg to everyone who played!*");
-  } else {
-    lines.push("🎉 *Nobody played yesterday — be the one to beat today!*");
+  lines.push(final
+    ? "🏆 **🎨 [DIALED.GG](https://dialed.gg) — FINAL RESULTS**"
+    : "🏆 **🎨 [DIALED.GG](https://dialed.gg) — DAILY RESULTS**");
+  if (!final) {
+    if (yesterdayWinner) {
+      lines.push(`🎉 **Yesterday's Winner:** <@${yesterdayWinner.discord_id}>    — **${Number(yesterdayWinner.score).toFixed(2)}** / 50 🎉`);
+      lines.push("*gg to everyone who played!*");
+    } else {
+      lines.push("🎉 *Nobody played yesterday — be the one to beat today!*");
+    }
   }
   lines.push("━━━━━━━━━━━━━━━");
-  lines.push("🎨 **TODAY'S LEADERBOARD**");
+  lines.push(final ? "🎨 **TODAY'S FINAL LEADERBOARD**" : "🎨 **TODAY'S LEADERBOARD**");
   lines.push(`*${fmtDate()}*`);
   for (let i = 0; i < 5; i++) {
     const entry = today[i];
@@ -84,115 +89,57 @@ function buildContent({ pingRole, yesterdayWinner, today, lastSubmitterDiscordId
       lines.push(`${MEDALS[i]} **TBD** — \`0\` / 50`);
     }
   }
-  lines.push(today[0]
-    ? `🔥 **Current Leader:** <@${today[0].discord_id}>  —  **${Number(today[0].score).toFixed(2)}**`
-    : `🔥 **Current Leader:** *Nobody yet — be the first!*`);
-  if (lastSubmitterDiscordId) {
-    lines.push("", `📝 *Just submitted:* <@${lastSubmitterDiscordId}> — **${Number(lastSubmitterScore).toFixed(2)}** / 50`);
+  if (final) {
+    lines.push(today[0]
+      ? `🎉 **Today's Winner:** <@${today[0].discord_id}>  —  **${Number(today[0].score).toFixed(2)}** / 50 🎉\n*gg to everyone who played!*`
+      : `🎉 *Nobody played today — see you tomorrow!*`);
+  } else {
+    lines.push(today[0]
+      ? `🔥 **Current Leader:** <@${today[0].discord_id}>  —  **${Number(today[0].score).toFixed(2)}**`
+      : `🔥 **Current Leader:** *Nobody yet — be the first!*`);
+    lines.push("*Scores can change throughout the day — keep playing!* 🎨🧠");
   }
-  lines.push("*Scores can change throughout the day — keep playing!* 🎨🧠");
-
-  if (includeReminder) {
-    lines.push(
-      "",
-      "📅 **Don't forget today's games:**",
-      `🎨 [Dialed.gg](${DIALED_URL}) — no Discord app for this one, visit the site then log your score with \`/dialed\``,
-      `🟩 [Wordle](${WORDLE_URL}) — tap to launch`,
-      `🔤 [Daily Word Wheel](${WORD_WHEEL_URL}) — tap to launch`,
-    );
-  }
-
   return lines.join("\n");
 }
 
-async function getState() {
-  const { rows: [s] } = await pool.query("SELECT * FROM dialed_leaderboard_state WHERE id = 1");
-  return s || null;
-}
-
-async function saveState(channel_id, message_id, board_date) {
-  await pool.query(`
-    INSERT INTO dialed_leaderboard_state (id, channel_id, message_id, board_date)
-    VALUES (1, $1, $2, $3)
-    ON CONFLICT (id) DO UPDATE SET channel_id=$1, message_id=$2, board_date=$3
-  `, [channel_id, message_id, board_date]);
-}
-
-// ── Morning post — the ONE role ping per day, plus reset + game reminders ──
-async function postMorningLeaderboard() {
+// ── Morning post — a plain, no-ping reminder with the game links ────────────
+async function postMorningReminder() {
   if (!CHANNEL_ID) { console.warn("DIALED_CHANNEL_ID not set"); return { ok: false }; }
-  const todayStr = getDialedDate();
-  const yesterdayWinner = await getYesterdayWinner(todayStr);
 
-  const content = buildContent({
-    pingRole: true,
-    yesterdayWinner,
-    today: [],
-    includeReminder: true,
-  });
+  const content = [
+    "📅 **Today's games are up — come play!**",
+    `🎨 [Dialed.gg](${DIALED_URL}) — no Discord app for this one, visit the site then log your score with \`/dialed\``,
+    `🟩 [Wordle](${WORDLE_URL}) — tap to launch`,
+    `🔤 [Daily Word Wheel](${WORD_WHEEL_URL}) — tap to launch`,
+    "",
+    "*The final leaderboard posts tonight.* 🎨🧠",
+  ].join("\n");
 
-  const msg = await discordAPI("POST", `/channels/${CHANNEL_ID}/messages`, { content });
+  const msg = await discordAPI("POST", `/channels/${CHANNEL_ID}/messages`, { content, allowed_mentions: NO_PINGS });
   if (!msg.id) { console.error("Dialed morning post failed:", JSON.stringify(msg)); return { ok: false }; }
-
-  await saveState(CHANNEL_ID, msg.id, todayStr);
   return { ok: true };
 }
 
-// ── Called right after a score submission — edits the shared leaderboard
-// message in place (no role ping, no game reminders). Yesterday's winner is
-// only shown if this is the first leaderboard post of the day — once one
-// exists (morning cron or an earlier submission), later edits skip straight
-// to live standings. Always resolves to { ok, channelId, messageId } on
-// success, or { ok:false, error, code } on failure — callers must check
-// `ok` rather than assume a truthy return means it worked.
-async function refreshLeaderboardMessage({ lastSubmitterDiscordId, lastSubmitterScore }) {
-  if (!CHANNEL_ID) {
-    console.warn("DIALED_CHANNEL_ID not set — leaderboard message not updated.");
-    return { ok: false, error: "DIALED_CHANNEL_ID not configured" };
-  }
-  const todayStr = getDialedDate();
-  const [today, state] = await Promise.all([getTodayLeaderboard(todayStr), getState()]);
-  const haveTodayMessage = state && String(state.board_date).slice(0, 10) === todayStr && state.message_id;
+// ── End-of-day post — the ONE leaderboard post each day, no pings ───────────
+async function postEveningLeaderboard() {
+  if (!CHANNEL_ID) { console.warn("DIALED_CHANNEL_ID not set"); return { ok: false }; }
+  const today = await getTodayLeaderboard(getDialedDate());
+  const content = buildContent({ today, final: true });
 
-  const yesterdayWinner = haveTodayMessage ? null : await getYesterdayWinner(todayStr);
-  const content = buildContent({
-    pingRole: false,
-    yesterdayWinner,
-    today,
-    lastSubmitterDiscordId,
-    lastSubmitterScore,
-    includeReminder: false,
-  });
-
-  if (haveTodayMessage) {
-    const edited = await discordAPI("PATCH", `/channels/${state.channel_id}/messages/${state.message_id}`, { content });
-    if (edited && edited.id) {
-      return { ok: true, channelId: state.channel_id, messageId: state.message_id };
-    }
-    // Edit failed (message deleted, permissions changed, etc.) — fall
-    // through and post a fresh one below rather than losing the update.
-    console.warn("Dialed leaderboard edit failed, posting a new message instead:", JSON.stringify(edited));
-  }
-
-  const msg = await discordAPI("POST", `/channels/${CHANNEL_ID}/messages`, { content });
-  if (msg && msg.id) {
-    await saveState(CHANNEL_ID, msg.id, todayStr);
-    return { ok: true, channelId: CHANNEL_ID, messageId: msg.id };
-  }
-  console.error("Dialed leaderboard post failed — Discord API response:", JSON.stringify(msg));
-  return { ok: false, error: msg?.message || "Unknown Discord API error", code: msg?.code };
+  const msg = await discordAPI("POST", `/channels/${CHANNEL_ID}/messages`, { content, allowed_mentions: NO_PINGS });
+  if (!msg.id) { console.error("Dialed evening post failed:", JSON.stringify(msg)); return { ok: false }; }
+  return { ok: true };
 }
 
 // ── On-demand pull for `/dialed leaderboard` — always includes yesterday's
-// winner for context since it's a standalone snapshot, not tied to the
-// day's running thread of messages. No role ping, no game reminders.
+// winner for context since it's a standalone snapshot. No role ping.
 async function getLeaderboardSnapshot() {
   const todayStr = getDialedDate();
   const [today, yesterdayWinner] = await Promise.all([
     getTodayLeaderboard(todayStr),
     getYesterdayWinner(todayStr),
   ]);
-  return buildContent({ pingRole: false, yesterdayWinner, today, includeReminder: false });
+  return buildContent({ yesterdayWinner, today });
 }
 
-module.exports = { postMorningLeaderboard, refreshLeaderboardMessage, getLeaderboardSnapshot };
+module.exports = { postMorningReminder, postEveningLeaderboard, getLeaderboardSnapshot };

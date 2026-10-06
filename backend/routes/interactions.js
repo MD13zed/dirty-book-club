@@ -292,7 +292,7 @@ async function handleDialedScore(res, options, discordId, guildId) {
     const targetName = targetDiscordId === discordId ? "Your" : `<@${targetDiscordId}>'s`;
     return res.json(reply([embed(
       "🎨 Not a new best",
-      `${targetName} best today is still **${Number(existing.score).toFixed(2)}** / 50 — the leaderboard wasn't updated since **${Number(score).toFixed(2)}** doesn't beat it.`,
+      `${targetName} best today is still **${Number(existing.score).toFixed(2)}** / 50 — it wasn't recorded since **${Number(score).toFixed(2)}** doesn't beat it.`,
       color.indigo,
     )], true));
   }
@@ -305,36 +305,12 @@ async function handleDialedScore(res, options, discordId, guildId) {
     [uuidv4(), memberId, score, playDate]
   );
 
-  // Show the actual member whose score was recorded in the leaderboard's
-  // "Just submitted" line, not the admin who entered it.
-  let board = { ok: false, error: "not attempted" };
-  try {
-    board = await dialed.refreshLeaderboardMessage({
-      lastSubmitterDiscordId: targetDiscordId,
-      lastSubmitterScore: score
-    });
-  } catch (e) {
-    console.error("Dialed leaderboard refresh threw:", e.message);
-    board = { ok: false, error: e.message };
-  }
-
-  let channelLine;
-  if (board.ok && guildId) {
-    const link = `https://discord.com/channels/${guildId}/${board.channelId}/${board.messageId}`;
-    channelLine = `\n[Check the leaderboard to see where they stand!](${link})`;
-  } else if (board.ok) {
-    channelLine = `\nCheck <#${board.channelId}> to see where they rank!`;
-  } else {
-    console.error(`Dialed leaderboard update failed for ${targetDiscordId}:`, board.error, board.code || "");
-    channelLine = `\n⚠️ *The score was saved, but the public leaderboard couldn't be updated (${board.error}). Let an admin know.*`;
-  }
-
   const improvedNote = existing ? ` — improved from ${Number(existing.score).toFixed(2)}` : "";
   const targetLabel = targetDiscordId === discordId ? "Your" : `<@${targetDiscordId}>'s`;
 
   return res.json(reply([embed(
     "🎨 New best score!",
-    `${targetLabel} score **${Number(score).toFixed(2)}** / 50 logged for today${improvedNote}.${channelLine}`,
+    `${targetLabel} score **${Number(score).toFixed(2)}** / 50 logged for today${improvedNote}.\n*The final leaderboard posts at the end of the day.*`,
     color.green,
   )], true));
 }
