@@ -100,6 +100,24 @@ async function notifyReviewLeft({ book_title, member_name, rating, notes }) {
   });
 }
 
+// ── Notify: book DNF'd (reason is hidden behind a Discord spoiler) ────────────
+async function notifyDnf({ book_title, member_name, reason, reasonOnly = false }) {
+  const clean   = (reason || "").trim().replace(/\|\|/g, "| |");   // stop "||" from breaking the spoiler
+  const trimmed = clean.length > 900 ? clean.slice(0, 897) + "…" : clean;
+  const lines = [reasonOnly
+    ? `**${member_name}** added why they DNF'd **${book_title}**`
+    : `**${member_name}** didn't finish **${book_title}**`];
+  if (trimmed) lines.push(`Why: ||${trimmed}||`);
+  return postWebhook(WEBHOOK_ANNOUNCEMENTS, {
+    embeds: [{
+      title:       `💀 DNF`,
+      description: lines.join("\n"),
+      color:       0x904040,
+      timestamp:   new Date().toISOString(),
+    }],
+  });
+}
+
 // ── Announce: book of the month + create thread ───────────────────────────────
 async function announceBookOfTheMonth({ title, author, series, genres, cover_url, month }) {
   if (!BOT_TOKEN) { console.warn("DISCORD_BOT_TOKEN not set"); return; }
@@ -152,4 +170,4 @@ async function postTbrPoll({ books, duration_hours = 48 }) {
   });
 }
 
-module.exports = { notifyBookAdded, notifyReviewLeft, announceBookOfTheMonth, postTbrPoll, discordAPI };
+module.exports = { notifyBookAdded, notifyReviewLeft, notifyDnf, announceBookOfTheMonth, postTbrPoll, discordAPI };

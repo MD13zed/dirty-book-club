@@ -27,7 +27,7 @@ function fmtDate(d) {
 }
 
 // ── DNF members section ───────────────────────────────────────────────────────
-function DnfMembersSection({ dnfRows, C, onClose, navigate }) {
+function DnfMembersSection({ dnfRows, C, onClose, navigate, meId }) {
   const [openIds, setOpenIds] = useState(new Set());
   const toggle = (id) => setOpenIds(s => {
     const n = new Set(s);
@@ -45,7 +45,7 @@ function DnfMembersSection({ dnfRows, C, onClose, navigate }) {
                 <Avatar name={p.member_name} src={p.member_avatar} size={24} />
                 <span onClick={() => { onClose(); navigate(`/profile/${p.member_id}`); }}
                   style={{ fontFamily:"monospace", fontSize:12, color:C.accent, cursor:"pointer", textDecoration:"underline", textDecorationStyle:"dotted" }}>
-                  {p.member_name}
+                  {p.member_name}{p.member_id === meId ? " (you)" : ""}
                 </span>
               </div>
               {p.dnf_reason && (
@@ -173,9 +173,22 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
     const saved = await api.saveProgress(p);
     setProgress(saved);
     onProgressSaved?.(saved);
+    api.getProgress(book.id).then(setAllProgress).catch(() => {});
     if (isMobile && updates.status) {
       setProgressToast(STATUS_TOAST[updates.status] || "Saved");
       setTimeout(() => setProgressToast(null), 2000);
+    }
+  };
+
+  const [dnfState, setDnfState] = useState(""); // "", "saving", "saved", or an error message
+  const saveDnfReason = async () => {
+    setDnfState("saving");
+    try {
+      await saveProgress({ status:"dnf", dnf_reason: dnfReason.trim() || null });
+      setDnfState("saved");
+      setTimeout(() => setDnfState(s => s === "saved" ? "" : s), 2500);
+    } catch (e) {
+      setDnfState(`Couldn't save: ${e.message || "try again"}`);
     }
   };
 
@@ -331,9 +344,10 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
               )}
 
               {/* DNF members — tap to reveal reason */}
-              {allProgress.filter(p => p.member_id !== user?.id && p.status === "dnf").length > 0 && (
+              {allProgress.filter(p => p.status === "dnf").length > 0 && (
                 <DnfMembersSection
-                  dnfRows={allProgress.filter(p => p.member_id !== user?.id && p.status === "dnf")}
+                  dnfRows={allProgress.filter(p => p.status === "dnf")}
+                  meId={user?.id}
                   C={C}
                   onClose={onClose}
                   navigate={navigate}
@@ -388,14 +402,21 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
                 </div>
               )}
 
-              {progress?.status==="dnf" && (                <div>
+              {progress?.status==="dnf" && (
+                <div>
                   <label style={{ fontFamily:"monospace", fontSize:11, color:"#904040", display:"block", marginBottom:4 }}>WHY DID YOU DNF?</label>
-                  <textarea value={dnfReason} onChange={e=>setDnfReason(e.target.value)} placeholder="Optional — what made you stop?" rows={2}
-                    style={{ width:"100%", background:C.bg, border:"1px solid #90404055", borderRadius:3, color:C.text, fontFamily:"'EB Garamond',serif", fontSize:14, padding:"7px 11px", outline:"none", resize:"vertical", boxSizing:"border-box" }} />
-                  <button onClick={()=>saveProgress({status:"dnf",dnf_reason:dnfReason})}
-                    style={{ marginTop:6, background:"transparent", border:"1px solid #904040", borderRadius:3, color:"#c06060", fontFamily:"monospace", fontSize:12, padding:"5px 12px", cursor:"pointer" }}>
-                    Save reason
-                  </button>
+                  <textarea value={dnfReason} onChange={e=>{ setDnfReason(e.target.value); if (dnfState) setDnfState(""); }}
+                    onBlur={() => { if ((dnfReason.trim()||null) !== (progress?.dnf_reason||null)) saveDnfReason(); }}
+                    placeholder="Optional — what made you stop?" rows={3}
+                    style={{ width:"100%", background:C.bg, border:"1px solid #90404055", borderRadius:3, color:C.text, fontFamily:"'EB Garamond',serif", fontSize:16, padding:"7px 11px", outline:"none", resize:"vertical", boxSizing:"border-box" }} />
+                  <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:6 }}>
+                    <button onClick={saveDnfReason} disabled={dnfState==="saving"}
+                      style={{ background:"transparent", border:"1px solid #904040", borderRadius:3, color:"#c06060", fontFamily:"monospace", fontSize:12, padding:"6px 14px", cursor:"pointer" }}>
+                      {dnfState==="saving" ? "Saving…" : "Save reason"}
+                    </button>
+                    {dnfState==="saved" && <span style={{ fontFamily:"monospace", fontSize:11, color:"#60c080" }}>✓ Saved</span>}
+                    {dnfState && dnfState!=="saved" && dnfState!=="saving" && <span style={{ fontFamily:"monospace", fontSize:11, color:"#e06060" }}>{dnfState}</span>}
+                  </div>
                 </div>
               )}
             </div>

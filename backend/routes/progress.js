@@ -2,6 +2,7 @@ const router = require("express").Router();
 const { v4: uuidv4 } = require("uuid");
 const pool   = require("../db/pool");
 const { auth } = require("../middleware/auth");
+const { notifyDnf } = require("../discord");
 
 // GET /api/progress?bookId=xxx  OR  own progress list
 router.get("/", auth, async (req, res) => {
@@ -36,6 +37,12 @@ router.post("/", auth, async (req, res) => {
     const today = new Date().toISOString().slice(0, 10);
     const finishedValue = status === "finished" ? (finished_at || today) : (finished_at || null);
 
+    // Previous state, so we only announce a DNF once (not on every save)
+    const { rows: [prev] } = await pool.query(
+      "SELECT status, dnf_reason FROM reading_progress WHERE book_id=$1 AND member_id=$2",
+      [book_id, req.user.id]
+    );
+
     await pool.query(
       `INSERT INTO reading_progress (id, book_id, member_id, status, total_pages, current_page, started_at, finished_at, dnf_reason)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
@@ -56,6 +63,27 @@ router.post("/", auth, async (req, res) => {
       "SELECT * FROM reading_progress WHERE book_id=$1 AND member_id=$2",
       [book_id, req.user.id]
     );
+
+    // Discord: announce when someone newly DNFs a book, and once more if they
+    // add a reason afterwards. Later edits to the reason stay quiet.
+    if (row.status === "dnf") {
+      const newlyDnf    = prev?.status !== "dnf";
+      const reasonAdded = prev?.status === "dnf" && !(prev.dnf_reason || "").trim() && !!(row.dnf_reason || "").trim();
+      if (newlyDnf || reasonAdded) {
+        const { rows: [info] } = await pool.query(
+          `SELECT b.title, COALESCE(m.display_name, m.username) AS member_name
+           FROM books b, members m WHERE b.id=$1 AND m.id=$2`,
+          [book_id, req.user.id]
+        );
+        if (info) await notifyDnf({
+          book_title:  info.title,
+          member_name: info.member_name,
+          reason:      row.dnf_reason,
+          reasonOnly:  reasonAdded,
+        });
+      }
+    }
+
     res.status(201).json(row);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
