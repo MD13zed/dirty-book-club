@@ -53,7 +53,7 @@ router.post("/", auth, async (req, res) => {
     );
 
     // Discord notification
-    notifyReviewLeft({
+    await notifyReviewLeft({
       book_title:  r.book_title,
       member_name: r.member_name,
       rating:      r.rating,

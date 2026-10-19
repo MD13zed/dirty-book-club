@@ -11,7 +11,7 @@ function useIsMobile() {
 }
 import { useNavigate } from "react-router-dom";
 import { useTheme, useAuth } from "../App";
-import { StarRating, Avatar, genreColor, ProgressBar, STATUS_LABELS, STATUS_COLORS, GenrePicker, TwPicker } from "./ui";
+import { DateField, StarRating, Avatar, genreColor, ProgressBar, STATUS_LABELS, STATUS_COLORS, GenrePicker, TwPicker } from "./ui";
 import { api, coverSrc } from "../api";
 
 const INP = (C) => ({ width:"100%", background:C.bg, border:`1px solid ${C.border}`, borderRadius:3, color:C.text, fontFamily:"'EB Garamond',serif", fontSize:15, padding:"7px 11px", outline:"none", boxSizing:"border-box" });
@@ -205,7 +205,13 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
       <div onClick={e=>e.stopPropagation()} style={{ background:`linear-gradient(160deg,${C.card},${C.card2})`, border:`1px solid ${C.border}`, borderLeft: isMobile ? "none" : `5px solid ${genres.length?genreColor(genres[0]):C.dim}`, borderTop: isMobile ? `4px solid ${genres.length?genreColor(genres[0]):C.dim}` : "none", borderRadius: isMobile ? "16px 16px 0 0" : 6, maxWidth: isMobile ? "100%" : 560, width:"100%", boxShadow:"0 20px 60px #00000099", overflowY:"auto", maxHeight: isMobile ? "92dvh" : "none", paddingBottom: isMobile ? "env(safe-area-inset-bottom)" : 0 }}>
 
         {isMobile && <div style={{ width:36, height:4, background:"#3d2f5e", borderRadius:2, margin:"10px auto 4px" }} />}
-        {book.cover_url && <img src={coverSrc(book.cover_url)} alt={book.title} style={{ width:"100%", maxHeight:240, objectFit:"cover", objectPosition:"top" }} />}
+        {book.cover_url && (
+          <div style={{ position:"relative", width:"100%", background:C.bg, display:"flex", justifyContent:"center", overflow:"hidden" }}>
+            {/* blurred copy fills the side bars so the full (uncropped) cover sits on a matching backdrop */}
+            <img src={coverSrc(book.cover_url)} alt="" aria-hidden="true" style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover", filter:"blur(24px) brightness(0.45)", transform:"scale(1.2)" }} />
+            <img src={coverSrc(book.cover_url)} alt={book.title} style={{ position:"relative", display:"block", width:"auto", maxWidth:"100%", maxHeight: isMobile ? "46dvh" : 420, objectFit:"contain" }} />
+          </div>
+        )}
 
         <div style={{ padding:"28px 24px", display:"flex", flexDirection:"column", gap:14 }}>
 
@@ -218,7 +224,7 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
               <div style={{ display:"flex", gap:10 }}>
                 <div style={{ flex:1 }}>
                   <label style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, display:"block", marginBottom:3 }}>DATE READ</label>
-                  <input type="date" value={editForm.date_read} onChange={e=>setEditForm(f=>({...f,date_read:e.target.value}))} style={{...INP(C),colorScheme:"dark"}} />
+                  <DateField C={C} value={editForm.date_read} onChange={v=>setEditForm(f=>({...f,date_read:v}))} />
                 </div>
                 <div style={{ flex:1 }}>
                   <label style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, display:"block", marginBottom:3 }}>TOTAL PAGES</label>
@@ -377,9 +383,8 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
               {progress?.status==="finished" && (
                 <div>
                   <label style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, display:"block", marginBottom:4 }}>DATE FINISHED</label>
-                  <input type="date" value={finishedAt}
-                    onChange={e => { setFinishedAt(e.target.value); saveProgress({ finished_at: e.target.value || null }); }}
-                    style={INP(C)} />
+                  <DateField C={C} value={finishedAt}
+                    onChange={v => { setFinishedAt(v); saveProgress({ finished_at: v || null }); }} />
                 </div>
               )}
 

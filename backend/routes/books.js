@@ -102,7 +102,7 @@ router.post("/", auth, async (req, res) => {
     const { rows: [book] } = await pool.query("SELECT * FROM books WHERE id=$1", [id]);
 
     if (!silent) {
-      notifyBookAdded({
+      await notifyBookAdded({
         title:          book.title,
         author:         book.author,
         series:         book.series,

@@ -5,19 +5,34 @@ const WEBHOOK_BOTM          = process.env.DISCORD_WEBHOOK_BOTM;
 const BOT_TOKEN             = process.env.DISCORD_BOT_TOKEN;
 const BOTM_CHANNEL_ID       = "1369670347229761614";
 
+// Returns a promise that resolves once Discord has answered. Callers on Vercel
+// MUST await this — serverless functions are frozen the moment the HTTP
+// response is sent, so a fire-and-forget request is silently dropped.
 function postWebhook(webhookUrl, payload) {
-  if (!webhookUrl) return;
-  const body = JSON.stringify(payload);
-  const url  = new URL(webhookUrl);
-  const req  = https.request({
-    hostname: url.hostname,
-    path:     url.pathname + url.search,
-    method:   "POST",
-    headers:  { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(body) },
+  return new Promise(resolve => {
+    if (!webhookUrl) { console.warn("Webhook URL not set — skipping notification"); return resolve(false); }
+    const body = JSON.stringify(payload);
+    let url;
+    try { url = new URL(webhookUrl); } catch { console.error("Invalid webhook URL"); return resolve(false); }
+    const req  = https.request({
+      hostname: url.hostname,
+      path:     url.pathname + url.search,
+      method:   "POST",
+      headers:  { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(body) },
+      timeout:  8000,
+    }, res => {
+      let data = "";
+      res.on("data", d => data += d);
+      res.on("end", () => {
+        if (res.statusCode >= 300) console.error("Webhook failed:", res.statusCode, data);
+        resolve(res.statusCode < 300);
+      });
+    });
+    req.on("timeout", () => { console.error("Webhook timeout"); req.destroy(); });
+    req.on("error", e => { console.error("Webhook error:", e.message); resolve(false); });
+    req.write(body);
+    req.end();
   });
-  req.on("error", e => console.error("Webhook error:", e.message));
-  req.write(body);
-  req.end();
 }
 
 function discordAPI(method, path, payload) {
@@ -47,10 +62,10 @@ function discordAPI(method, path, payload) {
 }
 
 // ── Notify: book added ────────────────────────────────────────────────────────
-function notifyBookAdded({ title, author, series, genres, cover_url, added_by_name }) {
+async function notifyBookAdded({ title, author, series, genres, cover_url, added_by_name }) {
   const genreStr  = genres?.length ? genres.join(", ") : "Untagged";
   const seriesStr = series ? ` *(${series})*` : "";
-  postWebhook(WEBHOOK_ANNOUNCEMENTS, {
+  return postWebhook(WEBHOOK_ANNOUNCEMENTS, {
     embeds: [{
       title:       `📚 New Book Added!`,
       description: `**${title}**${seriesStr}\nby *${author || "Unknown"}*`,
@@ -66,12 +81,12 @@ function notifyBookAdded({ title, author, series, genres, cover_url, added_by_na
 }
 
 // ── Notify: review left ───────────────────────────────────────────────────────
-function notifyReviewLeft({ book_title, member_name, rating, notes }) {
+async function notifyReviewLeft({ book_title, member_name, rating, notes }) {
   const stars   = rating ? "⭐".repeat(rating) : "No rating";
   const preview = notes?.trim()
     ? (notes.length > 200 ? notes.slice(0, 197) + "…" : notes)
     : "*No notes left*";
-  postWebhook(WEBHOOK_ANNOUNCEMENTS, {
+  return postWebhook(WEBHOOK_ANNOUNCEMENTS, {
     embeds: [{
       title:       `✍️ New Review`,
       description: `**${member_name}** reviewed **${book_title}**`,

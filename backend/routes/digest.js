@@ -18,9 +18,9 @@ async function postDigest() {
     SELECT b.title, b.author, b.cover_url,
            m.display_name, m.username
     FROM books b
-    JOIN members m ON m.id = b.added_by
+    LEFT JOIN members m ON m.id = b.added_by
     WHERE b.added_at >= $1
-      AND (b.source IS NULL OR b.source = 'manual')
+      AND (b.source IS NULL OR b.source <> 'csv')
     ORDER BY b.added_at DESC
   `, [weekStr]);
 
@@ -34,6 +34,17 @@ async function postDigest() {
     WHERE rp.status = 'reading'
     ORDER BY rp.updated_at DESC
   `);
+
+  // ── Finished this week ─────────────────────────────────────────────────────
+  const { rows: finishedBooks } = await pool.query(`
+    SELECT b.title, m.display_name, m.username
+    FROM reading_progress rp
+    JOIN books b   ON b.id = rp.book_id
+    JOIN members m ON m.id = rp.member_id
+    WHERE rp.status = 'finished'
+      AND COALESCE(rp.finished_at, rp.updated_at::date) >= $1::date
+    ORDER BY COALESCE(rp.finished_at, rp.updated_at::date) DESC, rp.updated_at DESC
+  `, [weekStr]);
 
   // ── Reviews left this week ─────────────────────────────────────────────────
   const { rows: reviews } = await pool.query(`
@@ -74,7 +85,7 @@ async function postDigest() {
     FROM reading_progress rp
     JOIN members m ON m.id = rp.member_id
     WHERE rp.status = 'finished'
-      AND rp.finished_at >= $1
+      AND COALESCE(rp.finished_at, rp.updated_at::date) >= $1::date
     GROUP BY m.id, m.display_name, m.username
     ORDER BY books_finished DESC, LOWER(COALESCE(m.display_name, m.username)) ASC
     LIMIT 3
@@ -118,10 +129,22 @@ const truncate = (str, max = 4000) => str.length > max ? str.slice(0, max) + "\n
     embeds.push({
       title: `📚 Added this week — ${newBooks.length} book${newBooks.length!==1?"s":""}`,
       description: truncate(newBooks.map(b => {
-        const who = b.display_name || b.username;
+        const who = b.display_name || b.username || "someone";
         return `**${b.title}**${b.author?` *by ${b.author}*`:""} — added by ${who}`;
       }).join("\n")),
       color: color.purple,
+    });
+  }
+
+  // Finished this week
+  if (finishedBooks.length > 0) {
+    embeds.push({
+      title: `✅ Finished this week — ${finishedBooks.length} book${finishedBooks.length!==1?"s":""}`,
+      description: truncate(finishedBooks.map(f => {
+        const who = f.display_name || f.username || "someone";
+        return `**${who}** finished **${f.title}**`;
+      }).join("\n")),
+      color: color.green,
     });
   }
 

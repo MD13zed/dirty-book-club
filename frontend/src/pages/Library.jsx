@@ -4,7 +4,7 @@ import { useTheme, useAuth } from "../App";
 import { api, coverSrc } from "../api";
 import BookCard from "../components/BookCard";
 import BookModal from "../components/BookModal";
-import { GenrePicker, GENRES, genreColor, TwPicker, Avatar } from "../components/ui";
+import { GenrePicker, GENRES, genreColor, TwPicker, Avatar, DateField } from "../components/ui";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
@@ -918,7 +918,7 @@ export default function Library() {
                 </div>
                 <div>
                   <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.dimmer, marginBottom:3 }}>DATE READ</label>
-                  <input type="date" value={form.date_read} onChange={e=>setForm(f=>({...f,date_read:e.target.value}))} style={{...INP,colorScheme:"dark"}} />
+                  <DateField C={C} value={form.date_read} onChange={v=>setForm(f=>({...f,date_read:v}))} />
                 </div>
                 <div>
                   <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.dimmer, marginBottom:3 }}>TOTAL PAGES</label>
@@ -991,7 +991,7 @@ export default function Library() {
                 </div>
                 <div>
                   <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.dimmer, marginBottom:3 }}>DATE READ</label>
-                  <input type="date" value={form.date_read} onChange={e=>setForm(f=>({...f,date_read:e.target.value}))} style={{...INP,colorScheme:"dark"}} />
+                  <DateField C={C} value={form.date_read} onChange={v=>setForm(f=>({...f,date_read:v}))} />
                 </div>
                 <div>
                   <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.dimmer, marginBottom:3 }}>TOTAL PAGES</label>

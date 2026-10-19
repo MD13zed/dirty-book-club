@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useTheme } from "../App";
 
 const RATINGS = [1,2,3,4,5];
@@ -252,3 +252,39 @@ export const STATUS_COLORS = {
   finished:     "#409060",
   dnf:          "#904040",
 };
+
+
+// ── DateField ─────────────────────────────────────────────────────────────────
+// Native date input that reliably opens the calendar on tap/click (mobile AND
+// desktop). Desktop browsers normally only open the picker from the tiny
+// indicator icon, so we call showPicker() on click/focus. Font size is 16px so
+// iOS doesn't zoom, and a 📅 icon makes it obvious it is a calendar.
+export function DateField({ value, onChange, style, C, max }) {
+  const ref = useRef(null);
+  const open = () => {
+    const el = ref.current;
+    if (!el) return;
+    try { el.showPicker?.(); } catch { /* already open / not allowed — native behaviour takes over */ }
+  };
+  return (
+    <div style={{ position:"relative", width:"100%" }}>
+      <input
+        ref={ref}
+        type="date"
+        value={value || ""}
+        max={max}
+        onChange={e => onChange(e.target.value)}
+        onClick={open}
+        onFocus={open}
+        style={{
+          width:"100%", minHeight:42, fontSize:16, colorScheme:"dark",
+          background:C.bg, border:`1px solid ${C.border}`, borderRadius:3, color:C.text,
+          fontFamily:"'EB Garamond',serif", padding:"7px 38px 7px 11px",
+          outline:"none", boxSizing:"border-box", cursor:"pointer",
+          WebkitAppearance:"none", appearance:"none", ...style,
+        }}
+      />
+      <span onClick={open} style={{ position:"absolute", right:11, top:"50%", transform:"translateY(-50%)", pointerEvents:"none", fontSize:16 }}>📅</span>
+    </div>
+  );
+}

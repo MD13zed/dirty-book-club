@@ -431,23 +431,24 @@ async function handleNominations(res) {
 }
 
 async function handleLeaderboard(res) {
+  // Correlated subqueries instead of joining reading_progress twice + reviews
+  // (that was a big row multiplication and, with a cold Neon DB, blew past
+  // Discord's 3-second interaction deadline -> "application did not respond").
   const { rows } = await pool.query(
-    `SELECT m.display_name, m.avatar_url,
-            COUNT(DISTINCT rp.book_id) FILTER (WHERE rp.status='finished')::int AS books_finished,
-            COUNT(DISTINCT r.id)::int AS reviews_left,
-            COUNT(DISTINCT rp2.book_id) FILTER (WHERE rp2.status='reading')::int AS currently_reading
+    `SELECT COALESCE(m.display_name, m.username) AS name,
+            (SELECT COUNT(*)::int FROM reading_progress rp WHERE rp.member_id = m.id AND rp.status = 'finished') AS books_finished,
+            (SELECT COUNT(*)::int FROM reading_progress rp WHERE rp.member_id = m.id AND rp.status = 'reading')  AS currently_reading,
+            (SELECT COUNT(*)::int FROM reviews r          WHERE r.member_id  = m.id AND r.rating > 0)            AS reviews_left
      FROM members m
-     LEFT JOIN reading_progress rp  ON rp.member_id  = m.id
-     LEFT JOIN reading_progress rp2 ON rp2.member_id = m.id
-     LEFT JOIN reviews r ON r.member_id = m.id AND r.rating > 0
-     GROUP BY m.id, m.display_name, m.avatar_url
-     ORDER BY books_finished DESC, reviews_left DESC LIMIT 10`
+     ORDER BY books_finished DESC, reviews_left DESC, name ASC
+     LIMIT 10`
   );
-  if (!rows.length) return res.json(reply([embed("🏅 Leaderboard", "No activity yet!", color.gold)]));
+  const active = rows.filter(m => m.books_finished || m.currently_reading || m.reviews_left);
+  if (!active.length) return res.json(reply([embed("🏅 Leaderboard", "No activity yet!", color.gold)]));
 
   const medals = ["🥇","🥈","🥉"];
-  const fields = rows.map((m, i) => ({
-    name:  `${medals[i]||`${i+1}.`} ${m.display_name}`,
+  const fields = active.map((m, i) => ({
+    name:  `${medals[i]||`${i+1}.`} ${m.name}`,
     value: [
       `✅ ${m.books_finished} finished`,
       `📖 ${m.currently_reading} reading`,

@@ -31,6 +31,11 @@ router.post("/", auth, async (req, res) => {
   if (!book_id) return res.status(400).json({ error: "book_id required" });
 
   try {
+    // A finished book always needs a finish date, otherwise it is invisible to
+    // the digest / leaderboards. Default to today if none was picked.
+    const today = new Date().toISOString().slice(0, 10);
+    const finishedValue = status === "finished" ? (finished_at || today) : (finished_at || null);
+
     await pool.query(
       `INSERT INTO reading_progress (id, book_id, member_id, status, total_pages, current_page, started_at, finished_at, dnf_reason)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
@@ -44,7 +49,7 @@ router.post("/", auth, async (req, res) => {
          updated_at   = CURRENT_TIMESTAMP`,
       [uuidv4(), book_id, req.user.id,
        status||"want_to_read", total_pages||null,
-       current_page||0, started_at||null, finished_at||null,
+       current_page||0, started_at||null, finishedValue,
        dnf_reason||null]
     );
     const { rows: [row] } = await pool.query(
