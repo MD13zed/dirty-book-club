@@ -102,11 +102,12 @@ function buildContent({ yesterdayWinner, today, final = false }) {
   return lines.join("\n");
 }
 
-// ── Morning post — a plain, no-ping reminder with the game links ────────────
+// ── Morning post — reminder with the game links, pings @here ────────────────
 async function postMorningReminder() {
   if (!CHANNEL_ID) { console.warn("DIALED_CHANNEL_ID not set"); return { ok: false }; }
 
   const content = [
+    "@here",
     "📅 **Today's games are up — come play!**",
     `🎨 [Dialed.gg](${DIALED_URL}) — no Discord app for this one, visit the site then log your score with \`/dialed\``,
     `🟩 [Wordle](${WORDLE_URL}) — tap to launch`,
@@ -115,7 +116,7 @@ async function postMorningReminder() {
     "*The final leaderboard posts tonight.* 🎨🧠",
   ].join("\n");
 
-  const msg = await discordAPI("POST", `/channels/${CHANNEL_ID}/messages`, { content, allowed_mentions: NO_PINGS });
+  const msg = await discordAPI("POST", `/channels/${CHANNEL_ID}/messages`, { content, allowed_mentions: { parse: ["everyone"] } });
   if (!msg.id) { console.error("Dialed morning post failed:", JSON.stringify(msg)); return { ok: false }; }
   return { ok: true };
 }
