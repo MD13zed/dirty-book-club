@@ -4,7 +4,7 @@ import { useTheme, useAuth } from "../App";
 import { api, coverSrc } from "../api";
 import BookCard from "../components/BookCard";
 import BookModal from "../components/BookModal";
-import { GenrePicker, GENRES, genreColor, TwPicker, Avatar, DateField } from "../components/ui";
+import { GenrePicker, GENRES, MAX_GENRES, genreColor, TwPicker, Avatar, DateField } from "../components/ui";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
@@ -511,9 +511,22 @@ export default function Library() {
 
   const pickSearchResult = (result) => {
     // Match Open Library subjects against our GENRES list (case-insensitive)
-    const matchedGenres = GENRES.filter(g =>
-      (result.subjects || []).some(s => s.toLowerCase().includes(g.toLowerCase()) || g.toLowerCase().includes(s.toLowerCase()))
-    ).slice(0, 5);
+    // Whole-word match only (so "Art" doesn't match "Particular" or "War" doesn't match "Award")
+    const esc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // Broad nonfiction-style words only match when the subject is exactly that word
+    // (otherwise "Science fiction" would tag "Science", "War stories" would tag "War", etc.)
+    const EXACT_ONLY = new Set(["Art","Science","History","War","Music","Law","Nature","Business","Education",
+      "Religion","Politics","Technology","Reference","Drama","Design","Travel","Psychology","Philosophy",
+      "Economics","Physics","Biology","Mathematics","Fashion","Fitness","Photography","Parenting","Theatre",
+      "Architecture","Gaming","Classics","Comics","Crafts","Detective","Supernatural","Paranormal","Inspirational"]);
+    const matchedGenres = GENRES.filter(g => {
+      const gl = g.toLowerCase();
+      const re = new RegExp(`(^|[^a-z0-9])${esc(gl)}($|[^a-z0-9])`);
+      return (result.subjects || []).some(s => {
+        const sl = String(s).toLowerCase();
+        return sl === gl || (!EXACT_ONLY.has(g) && re.test(sl));
+      });
+    }).slice(0, MAX_GENRES);
 
     // Some results embed series info in the title itself, e.g.
     // "Twisted Trails (Rogue Riders Duet Book 2)" — split that out so the
@@ -934,7 +947,7 @@ export default function Library() {
                 </div>
               </div>
               <div style={{ marginBottom:14 }}>
-                <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.dimmer, marginBottom:8 }}>GENRES — pick up to 5</label>
+                <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.dimmer, marginBottom:8 }}>GENRES — pick up to 8</label>
                 <GenrePicker value={form.genres} onChange={g=>setForm(f=>({...f,genres:g}))} />
               </div>
               <div style={{ marginBottom:14 }}>
@@ -1007,7 +1020,7 @@ export default function Library() {
                 </div>
               </div>
               <div style={{ marginBottom:14 }}>
-                <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.dimmer, marginBottom:8 }}>GENRES — pick up to 5</label>
+                <label style={{ display:"block", fontFamily:"monospace", fontSize:11, color:C.dimmer, marginBottom:8 }}>GENRES — pick up to 8</label>
                 <GenrePicker value={form.genres} onChange={g=>setForm(f=>({...f,genres:g}))} />
               </div>
               <div style={{ marginBottom:14 }}>

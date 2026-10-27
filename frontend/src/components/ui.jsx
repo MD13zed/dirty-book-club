@@ -36,45 +36,72 @@ export function Avatar({ name, src, size = 28 }) {
   );
 }
 
+export const MAX_GENRES = 8;
+
 export const GENRES = [
-  "Action","Adventure","Age Gap","Alien Romance","Alternate History",
-  "Angel Romance","Anthology","Arranged Marriage","Athlete Romance",
-  "BDSM","Beach Read","Best Friend's Brother","Billionaire Romance",
-  "Biography","Bodyguard Romance","Bondage","Breeding Kink","Bully Romance",
-  "Celebrity Romance","Chick Lit","Childhood Sweethearts","Coming of Age",
-  "Consensual Non-Con","Contemporary","Cowboy Romance","Cozy Fantasy","Cozy Mystery","Crime","Cyberpunk",
-  "Daddy Dom","Dark Erotica","Dark Fantasy","Dark Romance","Demon Romance",
-  "Doctor Romance","Dragon Romance","Dubcon","Dystopian",
-  "Enemies to Lovers","Epic Fantasy","Erotica","Essays","Exhibitionism",
-  "F/F Romance","Fae Romance","Fairy Tale Retelling","Family Saga",
-  "Fantasy","Fantasy Erotica","Fiction","Forbidden Love",
-  "Forbidden Student Teacher","Forced Proximity","Found Family","Free Use",
-  "Friends to Lovers",
-  "Ghost Romance","Gothic","Graphic Novel","Grumpy Sunshine",
-  "High Fantasy","Historical Fiction","Holiday Romance","Horror",
-  "Humor / Comedy","Hurt Comfort",
-  "Instalove","Isekai",
-  "Literary Fiction",
-  "M/M Romance","Mafia Romance","Magical Realism","Marriage of Convenience",
-  "Memoir","Menage","Mermaid Romance","Military Romance","Monster Romance",
-  "Mystery","Mythology",
-  "New Adult","Nonfiction","Novella",
-  "Obsessive Hero","Office Romance","Omegaverse","Other",
-  "Paranormal Erotica","Paranormal Romance","Pet Play","Poetry","Polyamory",
-  "Possessive Hero","Post-Apocalyptic","Power Exchange","Praise Kink",
-  "Prey / Predator","Psychological Thriller",
-  "Queer Romance",
-  "Reverse Harem","Rockstar Romance","Romance","Romantasy","Royal Romance",
-  "Sapphic Romance","Satire","Sci-Fi","Sci-Fi Erotica","Second Chance",
-  "Secret Baby","Self Help","Shifter Romance","Short Stories","Single Dad",
-  "Size Difference","Slice of Life","Slow Burn","Small Town","Smut",
-  "Space Opera","Spicy Contemporary","Sports Romance","Stalker Romance",
-  "Steampunk","Steamy Fantasy","Steamy Thriller","Step Romance","Suspense",
-  "Taboo","Thriller","Time Travel","True Crime",
-  "Urban Fantasy",
-  "Vampire Romance","Voyeurism",
-  "Werewolf Romance","Why Choose","Witch Romance","Women's Fiction",
-  "Young Adult",
+  "Academic", "Action", "Adventure", "African American Fiction", "Age Gap", "Alien Romance",
+  "Alpha Hero", "Alternate History", "Amnesia", "Ancient Egypt", "Angel Romance", "Anthology",
+  "Anthropology", "Architecture", "Arranged Marriage", "Art", "Art History", "Artist Romance",
+  "Asexual Romance", "Assassin Romance", "Astronomy", "Athlete Romance", "Baseball Romance",
+  "BDSM", "Beach Read", "Best Friend's Brother", "Beta Hero", "Bi / Pan Romance", "Biker Romance",
+  "Billionaire Romance", "Biography", "Biology", "Biopunk", "Blood Play", "Boarding School",
+  "Bodyguard Romance", "Bondage", "BookTok Favorite", "Bratva Romance", "Breeding Kink",
+  "Bully Romance", "Business", "Captive Romance", "Cartel Romance", "Celebrity Romance",
+  "Chef Romance", "Chick Lit", "Childhood Sweethearts", "Children's", "Christian Fiction",
+  "Christmas", "Cinnamon Roll Hero", "Classics", "Clean Romance", "Cli-Fi", "College Romance",
+  "Comics", "Coming of Age", "Consensual Non-Con", "Contemporary", "Contemporary Fantasy",
+  "Contemporary Romance", "Cookbook", "Cosmic Horror", "Cowboy Romance", "Cozy Fantasy",
+  "Cozy Mystery", "Cozy Romance", "Cozy Sci-Fi", "Crafts", "Crime", "Cuckolding / Hotwife",
+  "Cultivation", "Cyberpunk", "Daddy Dom", "Dark Academia", "Dark Comedy", "Dark Erotica",
+  "Dark Fantasy", "Dark Romance", "Death Romance", "Degradation", "Demon Romance", "Design",
+  "Detective", "Diary / Journal", "Doctor Romance", "Domestic Thriller", "Dragon Romance", "Drama",
+  "Dubcon", "Dungeons & Dragons", "Dystopian", "Economics", "Education",
+  "Enemies to Friends to Lovers", "Enemies to Lovers", "Environment", "Epic Fantasy", "Epistolary",
+  "Erotic Thriller", "Erotica", "Espionage", "Essays", "Exhibitionism", "F/F Romance",
+  "F1 / Racing Romance", "Fae Romance", "Fairy Tale Retelling", "Fake Dating", "Fake Engagement",
+  "Family Saga", "Fanfiction Origin", "Fantasy", "Fantasy Erotica", "Fashion", "Fast Burn",
+  "Fated Mates", "Femdom", "Feminism", "Fiction", "Firefighter Romance", "First Love", "Fitness",
+  "Folk Horror", "Folklore", "Food & Drink", "Football Romance", "Forbidden Love",
+  "Forbidden Student Teacher", "Forced Proximity", "Found Family", "Free Use", "Friends to Lovers",
+  "Friends with Benefits", "Gaming", "Gardening", "Gargoyle Romance", "Gaslamp Fantasy",
+  "Gender Studies", "Ghost Romance", "Gods & Goddesses Romance", "Gothic", "Gothic Romance",
+  "Graphic Novel", "Greek Mythology", "Grimdark", "Grumpy Sunshine", "Hard Sci-Fi",
+  "Haunted House", "He Falls First", "Health & Wellness", "Heist", "Hidden Identity",
+  "High Fantasy", "Highlander Romance", "Hip Hop", "Historical Fiction", "Historical Mystery",
+  "Historical Romance", "History", "Hockey Romance", "Holiday Romance", "Home & Garden", "Horror",
+  "Horror Comedy", "Humanities", "Humor / Comedy", "Hurt Comfort", "Impact Play",
+  "Incubus / Succubus", "Inspirational", "Instalove", "Interracial Romance", "Isekai",
+  "Jewish Fiction", "Knife Play", "Knotting", "Law", "Legal Thriller", "LGBTQ+", "Light Academia",
+  "Literary Fiction", "LitRPG", "Locked Room", "Love Triangle", "Low Fantasy", "M/M Romance",
+  "Mafia Romance", "Magical Realism", "Maledom", "Manga", "Marriage of Convenience", "Mathematics",
+  "Mating Heat", "Medical Thriller", "Medieval Romance", "Memoir", "Menage", "Mental Health",
+  "Mermaid Romance", "Middle Grade", "Military History", "Military Romance", "Military Sci-Fi",
+  "Mistaken Identity", "MMA / Fighter Romance", "Monster Romance", "Morally Grey", "Music",
+  "Mutual Pining", "Mystery", "Mythic Fantasy", "Mythology", "Nature", "Neighbors to Lovers",
+  "New Adult", "Noir", "Nonbinary Romance", "Nonfiction", "Norse Mythology", "Novella",
+  "Obsessive Hero", "Occult", "Office Romance", "Older Woman Younger Man", "Omegaverse",
+  "One Night Stand", "Only One Bed", "Opposites Attract", "Orgasm Control", "Paranormal",
+  "Paranormal Erotica", "Paranormal Mystery", "Paranormal Romance", "Parenting", "Pet Play",
+  "Philosophy", "Photography", "Physics", "Picture Book", "Pirate Romance", "Poetry",
+  "Police Procedural", "Political Thriller", "Politics", "Polyamory", "Pop Culture",
+  "Portal Fantasy", "Possessive Hero", "Post-Apocalyptic", "Power Exchange", "Praise Kink",
+  "Pregnancy Romance", "Prey / Predator", "Productivity", "Professor Romance",
+  "Progression Fantasy", "Protective Hero", "Psychological Horror", "Psychological Thriller",
+  "Psychology", "Public Play", "Queer Romance", "Redemption Arc", "Reference", "Regency Romance",
+  "Religion", "Reverse Harem", "Rivals to Lovers", "Road Trip Romance", "Rockstar Romance",
+  "Romance", "Romantasy", "Romantic Comedy", "Romantic Suspense", "Roommates", "Royal Romance",
+  "Runaway Bride", "Sapphic Romance", "Satire", "Sci-Fi", "Sci-Fi Erotica", "Science",
+  "Science Fiction Romance", "Second Chance", "Secret Baby", "Secret Identity", "Self Help",
+  "Shifter Romance", "Short Stories", "Single Dad", "Siren Romance", "Size Difference", "Slasher",
+  "Slice of Life", "Slow Burn", "Small Town", "Smut", "Southern Gothic", "Southern Romance",
+  "Space Opera", "Spanking", "Spicy Contemporary", "Spirituality", "Sports Romance", "Spy Romance",
+  "Stalker Romance", "Steampunk", "Steamy Fantasy", "Steamy Thriller", "Step Romance", "Superhero",
+  "Supernatural", "Suspense", "Swingers", "Sword & Sorcery", "Taboo", "Tattoo Artist Romance",
+  "Technology", "Tentacle Erotica", "Theatre", "Thriller", "Time Travel", "Touch Her and Die",
+  "Touch Starved", "Toxic Relationship", "Trans Romance", "Travel", "True Crime", "Urban Fantasy",
+  "Vampire Romance", "Victorian Romance", "Viking Romance", "Villain Romance", "Voyeurism", "War",
+  "Werewolf Romance", "Western", "Western Romance", "Whodunit", "Why Choose", "Widow Romance",
+  "Witch Romance", "Women's Fiction", "Wuxia", "Xianxia", "Young Adult", "Zombie", "Other",
 ];
 
 const GENRE_COLORS = {
@@ -144,14 +171,27 @@ const GENRE_COLORS = {
   "Witch Romance":"#705090","Women's Fiction":"#c07090",
   "Young Adult":"#80c090",
 };
-export const genreColor = (g) => GENRE_COLORS[g] || "#706090";
+// Genres without an explicit colour above get a stable, muted colour derived from their name
+function hashColor(name) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  const hue = h % 360, s = 0.38, l = 0.52;
+  const a = s * Math.min(l, 1 - l);
+  const f = n => {
+    const k = (n + hue / 30) % 12;
+    const c = l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+    return Math.round(255 * c).toString(16).padStart(2, "0");
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+export const genreColor = (g) => GENRE_COLORS[g] || hashColor(g || "");
 
 export function GenrePicker({ value, onChange }) {
   const { C } = useTheme();
   const [q, setQ] = useState("");
   const toggle = (g) => {
     if (value.includes(g)) onChange(value.filter(x => x !== g));
-    else if (value.length < 5) onChange([...value, g]);
+    else if (value.length < MAX_GENRES) onChange([...value, g]);
   };
   const visible = q.trim()
     ? GENRES.filter(g => g.toLowerCase().includes(q.toLowerCase()))
@@ -163,7 +203,7 @@ export function GenrePicker({ value, onChange }) {
       <div style={{ display:"flex", flexWrap:"wrap", gap:5, maxHeight:180, overflowY:"auto" }}>
         {visible.map(g => {
           const sel  = value.includes(g);
-          const full = !sel && value.length >= 5;
+          const full = !sel && value.length >= MAX_GENRES;
           return (
             <button key={g} onClick={() => toggle(g)} disabled={full}
               style={{ background:sel?genreColor(g)+"33":"transparent", border:`1px solid ${sel?genreColor(g):C.border}`, borderRadius:20, color:sel?genreColor(g):full?C.dimmer:C.dim, fontFamily:"monospace", fontSize:11, padding:"3px 10px", cursor:full?"not-allowed":"pointer", transition:"all 0.15s" }}>
@@ -174,7 +214,7 @@ export function GenrePicker({ value, onChange }) {
         {visible.length === 0 && <span style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer }}>No genres match</span>}
       </div>
       {value.length > 0 && (
-        <div style={{ marginTop:6, fontFamily:"monospace", fontSize:11, color:C.dimmer }}>{value.length}/5 selected: {value.join(", ")}</div>
+        <div style={{ marginTop:6, fontFamily:"monospace", fontSize:11, color:C.dimmer }}>{value.length}/{MAX_GENRES} selected: {value.join(", ")}</div>
       )}
     </div>
   );
@@ -182,23 +222,32 @@ export function GenrePicker({ value, onChange }) {
 
 // ── Trigger Warnings ──────────────────────────────────────────────────────────
 export const TW_TAGS = [
-  "Abuse","Addiction","Animal Harm",
-  "Cheating / Infidelity","Child Abuse","Cliffhanger",
-  "Dark Themes","Death of a Child","Death of Loved One","Domestic Violence",
-  "Dubious Consent",
-  "Eating Disorder",
-  "Forced Pregnancy",
-  "Gaslighting","Gore","Grief",
-  "Homophobia / Transphobia","Human Trafficking",
-  "Kidnapping",
-  "Manipulation","Medical Trauma","Mental Illness",
-  "Non-Con",
-  "Open Ending",
-  "Pregnancy Loss",
-  "Racism / Racial Violence","Religious Trauma",
-  "SA","Self Harm","Stalking","Suicide",
-  "Terminal Illness","Torture","Trauma / PTSD",
-  "Violence","War / Combat",
+  "Abandonment", "Ableism", "Abortion", "Abuse", "Addiction", "Adoption / Foster Care",
+  "Animal Death", "Animal Harm", "Antisemitism", "Anxiety / Panic Attacks", "Attempted Suicide",
+  "Bipolar Disorder", "Blood", "Blood Play", "Body Horror", "Body Shaming", "Bullying", "Cancer",
+  "Cannibalism", "Captivity", "Car Accident", "Character Death", "Cheating / Infidelity",
+  "Child Abuse", "Child Neglect", "Childbirth", "Choking / Breath Play", "Chronic Illness",
+  "Classism", "Claustrophobia", "Cliffhanger", "Coercive Control", "Colonization",
+  "Conversion Therapy", "Cult / Religious Extremism", "Cyberbullying", "Dark Themes",
+  "Death of a Child", "Death of a Parent", "Death of a Pet", "Death of a Sibling",
+  "Death of a Spouse", "Death of Loved One", "Degradation", "Depression", "Disability",
+  "Dissociation", "Domestic Violence", "Drowning", "Drug Use", "Drugging", "Dubious Consent",
+  "Eating Disorder", "Elder Abuse", "Emotional Abuse", "Explicit Sexual Content", "Fatphobia",
+  "Fire / Burning", "Forced Marriage", "Forced Pregnancy", "Gaslighting", "Genocide", "Gore",
+  "Grief", "Grooming", "Gun Violence", "Hate Crime", "Homelessness", "Homophobia / Transphobia",
+  "Hospitalization", "Hostage Situation", "Human Trafficking", "Humiliation",
+  "Immigration / Deportation", "Incarceration", "Incest", "Infertility", "Insects / Spiders",
+  "Kidnapping", "Kidnapping of a Child", "Knife Play", "Major Character Death", "Manipulation",
+  "Mass Shooting", "Medical Trauma", "Mental Illness", "Miscarriage", "Misogyny", "Murder",
+  "Natural Disaster", "Needles / Medical Procedures", "No HEA / Unhappy Ending", "Non-Con", "OCD",
+  "Open Ending", "Overdose", "Parental Abuse", "Parental Neglect", "Physical Abuse", "Plane Crash",
+  "Police Brutality", "Postpartum Depression", "Poverty", "Pregnancy Loss",
+  "Psychosis / Schizophrenia", "Public Humiliation", "Racial Slurs", "Racism / Racial Violence",
+  "Rape", "Religious Trauma", "Revenge", "SA", "School Shooting", "Self Harm", "Sexism",
+  "Sexual Coercion", "Sexual Harassment", "Sexual Violence", "Slavery", "Stalking", "Stillbirth",
+  "Substance Abuse / Alcoholism", "Suicidal Ideation", "Suicide", "Terminal Illness", "Terrorism",
+  "Torture", "Toxic Relationship", "Trauma / PTSD", "Underage Sex", "Verbal Abuse", "Violence",
+  "Vomit", "War / Combat", "War Crimes", "Xenophobia",
 ];
 
 export function TwPicker({ value, onChange }) {

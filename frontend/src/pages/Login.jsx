@@ -1,7 +1,15 @@
 import { getTheme } from "../theme";
 const C = getTheme("dark-purple");
 
+const ERROR_MESSAGES = {
+  not_in_server: "This library is only for members of the club's Discord server. Join the server, then try logging in again.",
+  oauth_failed:  "Login didn't work — please try again in a moment.",
+  no_code:       "Login was cancelled — please try again.",
+};
+
 export default function Login() {
+  const errorKey = new URLSearchParams(window.location.search).get("error");
+  const errorMsg = errorKey ? (ERROR_MESSAGES[errorKey] || ERROR_MESSAGES.oauth_failed) : null;
   return (
     <div style={{ minHeight:"100vh", background:C.bg, display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
       <div style={{ background:`linear-gradient(160deg,${C.card},${C.card2})`, border:`1px solid ${C.border}`, borderRadius:8, padding:"48px 40px", maxWidth:400, width:"100%", boxShadow:"0 24px 80px #00000099", textAlign:"center" }}>
@@ -12,6 +20,12 @@ export default function Login() {
         <p style={{ fontFamily:"'EB Garamond',serif", fontSize:15, color:C.dim, fontStyle:"italic", marginBottom:36 }}>
           Your private library of spicy reads
         </p>
+
+        {errorMsg && (
+          <div style={{ background:"#e0507022", border:"1px solid #e0507066", borderRadius:6, color:"#e05070", fontFamily:"monospace", fontSize:12, lineHeight:1.5, padding:"10px 12px", marginBottom:16 }}>
+            {errorMsg}
+          </div>
+        )}
 
         {/* Discord Login Button */}
         <a href="https://dirty-book-club-5mry.vercel.app/auth/discord" style={{ textDecoration:"none" }}>

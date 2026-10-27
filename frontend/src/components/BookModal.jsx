@@ -247,7 +247,7 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
               <input value={editForm.cover_url} onChange={e=>setEditForm(f=>({...f,cover_url:e.target.value}))} placeholder="Cover URL" style={INP(C)} />
               <input type="file" accept="image/*" onChange={e=>setCoverFile(e.target.files[0])} style={{ color:C.muted, fontFamily:"monospace", fontSize:12 }} />
               <div>
-                <label style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, display:"block", marginBottom:6 }}>GENRES — up to 5</label>
+                <label style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, display:"block", marginBottom:6 }}>GENRES — up to 8</label>
                 <GenrePicker value={editForm.genres} onChange={g=>setEditForm(f=>({...f,genres:g}))} />
               </div>
               <div>

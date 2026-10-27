@@ -4,6 +4,41 @@ All notable changes to The Spicy Shelf are documented here.
 
 ---
 
+## [3.6.7] — 2026-10-27
+
+### Security
+- **Login is now limited to members of the Discord server.** After Discord OAuth, the backend asks Discord (via the bot) whether the user is in `DISCORD_GUILD_ID`. Outsiders are sent back to the login page with an "invite-only" message and no account is created. Fails closed in production if the check can't run.
+- **Cron endpoints fail closed.** `/api/digest`, `/api/yearend`, `/api/dialed-morning` and `/api/dialed-evening` now return 503 if `CRON_SECRET` isn't set (they used to be open to anyone) and compare the secret in constant time. Shared logic lives in `middleware/cronAuth.js`.
+- **Admin checks read the database, not the login token.** Promotions and demotions take effect immediately instead of after the 30-day token expires. Applies to the admin routes plus "owner or admin" deletes of books and nominations.
+- **Dependencies:** `npm audit fix` (express, axios, body-parser, qs, form-data, follow-redirects, proxy-addr), `multer` 1.x → 2.x, and `uuid` replaced with Node's built-in `crypto.randomUUID()`.
+
+### Fixed
+- **Book of the Month announcement now actually waits for Discord** before the request finishes (Vercel was free to drop it). The admin page reports what happened: announced, announced without a thread, or failed with Discord's reason. The pick itself is always saved.
+- **TBR poll and BOTM thread names are trimmed to Discord's limits** (poll answers 55 characters, thread names 100) and Discord errors are no longer swallowed — a rejected poll now shows an error instead of "posted".
+- Poll duration is clamped to Discord's 1–768 hours, and poll answers keep the order the admin picked.
+- Discord REST calls time out after 8 seconds instead of hanging.
+
+### Notes
+- `.env.example` now lists every variable the app uses (added `CRON_SECRET`, `DISCORD_GUILD_ID`, `DISCORD_APP_PUBLIC_KEY`, webhooks, `GOOGLE_BOOKS_API_KEY`; removed unused `DISCORD_ROLE_GAME_ON`).
+
+---
+
+## [3.6.6] — 2026-10-26
+
+### Added
+- **Genres expanded from 140 to 350.** Pulled in the mainstream Goodreads categories we were missing (Classics, History, Psychology, Science, Philosophy, Religion, Business, Travel, Cookbook, Manga, Comics, Children's, Middle Grade, Western and more), plus many more romance subgenres and tropes (Historical, Regency, Romantic Comedy, Romantic Suspense, Fake Dating, Only One Bed, Rivals to Lovers, Fated Mates, Morally Grey, Touch Her and Die, MC/Biker, Bratva, Hockey and other sports romances), thriller/mystery/horror/fantasy/sci-fi subgenres (Legal Thriller, Cosmic Horror, Grimdark, LitRPG, Cozy Sci-Fi, Dark Academia, Xianxia and more), and extra kink/spice tags.
+- **Trigger warnings expanded from 36 to 136.** Grouped by what they cover: violence, sexual violence, abuse types, loss and grief, mental health, medical and pregnancy, discrimination, phobias/squick, and ending warnings (No HEA, Major Character Death).
+- Any genre without an explicit colour now gets a stable colour generated from its name, so new tags never all look the same.
+
+### Changed
+- **Up to 8 genres per book** (was 5). Limit is a single `MAX_GENRES` constant in `ui.jsx` and `routes/books.js` (frontend picker, Open Library auto-match and the backend all use it).
+- **Open Library genre auto-match is now whole-word only**, and broad nonfiction words (Art, Science, History, War, Music…) only match an exact subject. Otherwise the old substring match would have tagged books by accident ("Particular" → Art, "Science fiction" → Science).
+
+### Notes
+- No database migration needed: `book_genres.genre` and `book_tw.tag` are already `VARCHAR(100)`. Existing tags are untouched.
+
+---
+
 ## [3.6.5] — 2026-10-06
 
 ### Changed

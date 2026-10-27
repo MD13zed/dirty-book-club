@@ -99,16 +99,30 @@ router.post("/botm", async (req, res) => {
     const { rows: genreRows } = await pool.query("SELECT genre FROM book_genres WHERE book_id=$1", [book_id]);
     const genres = genreRows.map(g => g.genre);
 
-    // Respect the "Post announcement to Discord" checkbox — previously this
-    // fired unconditionally regardless of what the frontend sent.
+    // Respect the "Post announcement to Discord" checkbox. This MUST be awaited:
+    // on Vercel the function is frozen as soon as the response is sent, so a
+    // fire-and-forget Discord call can be silently dropped.
+    let result = { ok: false, thread: false };
     if (announce) {
-      announceBookOfTheMonth({
-        title: book.title, author: book.author, series: book.series,
-        genres, cover_url: book.cover_url, month,
-      }).catch(e => console.error("Discord announce error:", e.message));
+      try {
+        result = await announceBookOfTheMonth({
+          title: book.title, author: book.author, series: book.series,
+          genres, cover_url: book.cover_url, month,
+        });
+      } catch (e) {
+        console.error("Discord announce error:", e.message);
+        result = { ok: false, thread: false, error: e.message };
+      }
     }
 
-    res.json({ announced: !!announce, month, book_title: book.title });
+    // The pick itself is saved either way; `announced` reports what Discord actually did.
+    res.json({
+      announced:  !!announce && result.ok,
+      thread:     !!announce && !!result.thread,
+      warning:    announce && !result.ok ? (result.error || "Discord post failed") : undefined,
+      month,
+      book_title: book.title,
+    });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -120,11 +134,15 @@ router.post("/tbr-poll", async (req, res) => {
     if (book_ids.length < 2) return res.status(400).json({ error: "Need at least 2 books for a poll" });
     if (book_ids.length > 10) return res.status(400).json({ error: "Max 10 books per poll" });
 
-    const { rows: books } = await pool.query(
+    const { rows: found } = await pool.query(
       "SELECT id, title, author FROM books WHERE id=ANY($1)", [book_ids]
     );
+    // Keep the order the admin picked them in
+    const books = book_ids.map(id => found.find(b => b.id === id)).filter(Boolean);
+    if (books.length < 2) return res.status(400).json({ error: "Need at least 2 valid books for a poll" });
 
-    await postTbrPoll({ books, duration_hours });
+    const result = await postTbrPoll({ books, duration_hours });
+    if (!result.ok) return res.status(502).json({ error: `Discord rejected the poll: ${result.error}` });
     res.json({ posted: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

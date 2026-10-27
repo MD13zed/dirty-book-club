@@ -1,10 +1,10 @@
 const express = require("express");
 const router  = express.Router();
+const cronAuth = require("../middleware/cronAuth");
 const pool    = require("../db/pool");
 
 const WEBHOOK     = process.env.DISCORD_WEBHOOK_ANNOUNCEMENTS;
 const SITE_URL    = process.env.FRONTEND_URL || "https://thespicyshelf.vercel.app";
-const CRON_SECRET = process.env.CRON_SECRET || "";
 
 const color = { purple:0xb08af0, pink:0xd060a0, gold:0xffd700, green:0x409060, red:0xe83030 };
 
@@ -204,11 +204,7 @@ async function postYearEnd() {
 }
 
 // ── Route — called by Vercel cron ─────────────────────────────────────────────
-router.get("/", async (req, res) => {
-  const auth = req.headers["authorization"] || "";
-  if (CRON_SECRET && auth !== `Bearer ${CRON_SECRET}`) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
+router.get("/", cronAuth, async (req, res) => {
   try {
     const result = await postYearEnd();
     res.json(result);

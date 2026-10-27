@@ -35,30 +35,48 @@ function postWebhook(webhookUrl, payload) {
   });
 }
 
-function discordAPI(method, path, payload) {
+// Low-level Discord REST call. Resolves { status, data } (never rejects on an
+// HTTP error status — callers decide what to do), and gives up after 8 seconds
+// so a slow Discord can't hang the whole serverless function.
+function discordRequest(method, path, payload) {
   return new Promise((resolve, reject) => {
-    const body = JSON.stringify(payload);
-    const req  = https.request({
+    const body    = payload === undefined ? null : JSON.stringify(payload);
+    const headers = { "Authorization": `Bot ${BOT_TOKEN}` };
+    if (body) {
+      headers["Content-Type"]   = "application/json";
+      headers["Content-Length"] = Buffer.byteLength(body);
+    }
+    const req = https.request({
       hostname: "discord.com",
       path:     `/api/v10${path}`,
       method,
-      headers: {
-        "Content-Type":   "application/json",
-        "Content-Length": Buffer.byteLength(body),
-        "Authorization":  `Bot ${BOT_TOKEN}`,
-      },
+      headers,
+      timeout:  8000,
     }, res => {
       let data = "";
       res.on("data", d => data += d);
       res.on("end", () => {
-        try { resolve(JSON.parse(data || "{}")); }
-        catch { resolve({}); }
+        let parsed = {};
+        try { parsed = JSON.parse(data || "{}"); } catch {}
+        resolve({ status: res.statusCode, data: parsed });
       });
     });
+    req.on("timeout", () => req.destroy(new Error("Discord request timed out")));
     req.on("error", reject);
-    req.write(body);
+    if (body) req.write(body);
     req.end();
   });
+}
+
+// Same as before for existing callers: resolves just the parsed JSON body.
+function discordAPI(method, path, payload) {
+  return discordRequest(method, path, payload).then(r => r.data);
+}
+
+// Trim to Discord's character limits (counts characters, not UTF-16 units).
+function clip(text, max) {
+  const chars = Array.from(String(text ?? ""));
+  return chars.length <= max ? chars.join("") : chars.slice(0, max - 1).join("") + "…";
 }
 
 // ── Notify: book added ────────────────────────────────────────────────────────
@@ -119,55 +137,70 @@ async function notifyDnf({ book_title, member_name, reason, reasonOnly = false }
 }
 
 // ── Announce: book of the month + create thread ───────────────────────────────
+// Returns { ok, thread, error } so the admin page can show what really happened.
 async function announceBookOfTheMonth({ title, author, series, genres, cover_url, month }) {
-  if (!BOT_TOKEN) { console.warn("DISCORD_BOT_TOKEN not set"); return; }
+  if (!BOT_TOKEN) { console.warn("DISCORD_BOT_TOKEN not set"); return { ok: false, thread: false, error: "DISCORD_BOT_TOKEN is not set" }; }
 
   const genreStr   = genres?.length ? genres.join(", ") : "Untagged";
   const seriesStr  = series ? ` *(${series})*` : "";
-  const threadName = `${month} 📖 ${title}`;
+  const threadName = clip(`${month} 📖 ${title}`, 100);   // Discord thread names max 100 chars
 
-  const msg = await discordAPI("POST", `/channels/${BOTM_CHANNEL_ID}/messages`, {
+  const { status, data: msg } = await discordRequest("POST", `/channels/${BOTM_CHANNEL_ID}/messages`, {
     content: "<@&1445035924227493928>",
     embeds: [{
       title:       `📔 Book of the Month — ${month}`,
       description: `**${title}**${seriesStr}\nby *${author || "Unknown"}*`,
       color:       0xa060d0,
-      fields: [{ name: "Genres", value: genreStr, inline: true }],
+      fields: [{ name: "Genres", value: clip(genreStr, 1024), inline: true }],
       thumbnail: cover_url ? { url: cover_url } : undefined,
       footer:    { text: "Happy reading, DBC! 🔥" },
       timestamp: new Date().toISOString(),
     }],
   });
 
-  if (msg.id) {
-    try {
-      await discordAPI("POST", `/channels/${BOTM_CHANNEL_ID}/messages/${msg.id}/threads`, {
-        name:                  threadName,
-        auto_archive_duration: 10080,
-      });
-    } catch (e) {
-      console.error("Thread creation failed:", e.message);
-    }
-  } else {
-    console.error("BOTM message post did not return an ID:", JSON.stringify(msg));
+  if (status >= 300 || !msg.id) {
+    console.error("BOTM message post failed:", status, JSON.stringify(msg));
+    return { ok: false, thread: false, error: msg.message || `Discord returned HTTP ${status}` };
   }
+
+  let thread = false;
+  try {
+    const t = await discordRequest("POST", `/channels/${BOTM_CHANNEL_ID}/messages/${msg.id}/threads`, {
+      name:                  threadName,
+      auto_archive_duration: 10080,
+    });
+    thread = t.status < 300;
+    if (!thread) console.error("Thread creation failed:", t.status, JSON.stringify(t.data));
+  } catch (e) {
+    console.error("Thread creation failed:", e.message);
+  }
+  return { ok: true, thread };
 }
 
 // ── TBR Poll ──────────────────────────────────────────────────────────────────
+// Returns { ok, error }. Poll answers max 55 chars; duration is whole hours, 1–768.
 async function postTbrPoll({ books, duration_hours = 48 }) {
-  if (!BOT_TOKEN) { console.warn("DISCORD_BOT_TOKEN not set"); return; }
+  if (!BOT_TOKEN) { console.warn("DISCORD_BOT_TOKEN not set"); return { ok: false, error: "DISCORD_BOT_TOKEN is not set" }; }
 
-  await discordAPI("POST", `/channels/${BOTM_CHANNEL_ID}/messages`, {
+  const hours = Math.min(768, Math.max(1, Math.round(Number(duration_hours)) || 48));
+
+  const { status, data } = await discordRequest("POST", `/channels/${BOTM_CHANNEL_ID}/messages`, {
     content: "<@&1445035924227493928>",
     poll: {
       question:         { text: "📚 Which book should we read next?" },
       answers:          books.map(b => ({
-        poll_media: { text: b.author ? `${b.title} by ${b.author}` : b.title }
+        poll_media: { text: clip(b.author ? `${b.title} by ${b.author}` : b.title, 55) }
       })),
-      duration:         duration_hours,
+      duration:         hours,
       allow_multiselect: false,
     },
   });
+
+  if (status >= 300 || !data.id) {
+    console.error("TBR poll failed:", status, JSON.stringify(data));
+    return { ok: false, error: data.message || `Discord returned HTTP ${status}` };
+  }
+  return { ok: true };
 }
 
-module.exports = { notifyBookAdded, notifyReviewLeft, notifyDnf, announceBookOfTheMonth, postTbrPoll, discordAPI };
+module.exports = { notifyBookAdded, notifyReviewLeft, notifyDnf, announceBookOfTheMonth, postTbrPoll, discordAPI, discordRequest };

@@ -53,8 +53,11 @@ export default function Admin() {
     if (!botmBookId || !botmMonth.trim()) { setBotmStatus("Please select a book and enter a month."); return; }
     try {
       setBotmStatus(announceToDiscord ? "Announcing..." : "Saving...");
-      await api.setBookOfTheMonth(botmBookId, botmMonth.trim(), announceToDiscord);
-      setBotmStatus(announceToDiscord ? "✅ Announced and thread created in Discord!" : "✅ Saved!");
+      const r = await api.setBookOfTheMonth(botmBookId, botmMonth.trim(), announceToDiscord);
+      if (!announceToDiscord)    setBotmStatus("✅ Saved!");
+      else if (!r?.announced)    setBotmStatus("⚠ Saved, but the Discord announcement failed" + (r?.warning ? ": " + r.warning : "") + ". Nothing was posted.");
+      else if (!r?.thread)       setBotmStatus("⚠ Announced in Discord, but the discussion thread couldn't be created.");
+      else                       setBotmStatus("✅ Announced and thread created in Discord!");
       setBotmBookId(""); setBotmMonth("");
       api.getBooks().then(setBooks);
     } catch (e) { setBotmStatus("❌ Error: " + e.message); }
@@ -248,7 +251,7 @@ export default function Admin() {
                 style={{ background:"linear-gradient(90deg,#b8860b,#d4af37)", border:"none", borderRadius:4, color:"#1a1000", fontFamily:"monospace", fontSize:13, fontWeight:700, padding:"12px 24px", cursor:"pointer", letterSpacing:1 }}>
                 {announceToDiscord ? "🔥 ANNOUNCE & CREATE THREAD" : "💾 SAVE BOOK OF THE MONTH"}
               </button>
-              {botmStatus && <div style={{ fontFamily:"monospace", fontSize:12, color:botmStatus.startsWith("✅")?"#60a080":botmStatus.startsWith("❌")?"#c05070":C.dimmer }}>{botmStatus}</div>}
+              {botmStatus && <div style={{ fontFamily:"monospace", fontSize:12, color:botmStatus.startsWith("✅")?"#60a080":botmStatus.startsWith("❌")?"#c05070":botmStatus.startsWith("⚠")?"#d09040":C.dimmer }}>{botmStatus}</div>}
             </div>
           </div>
           <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:6, padding:"18px 20px" }}>

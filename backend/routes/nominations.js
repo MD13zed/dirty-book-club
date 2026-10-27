@@ -1,7 +1,8 @@
 const router = require("express").Router();
-const { v4: uuidv4 } = require("uuid");
+const { randomUUID: uuidv4 } = require("crypto");
 const pool   = require("../db/pool");
 const { auth } = require("../middleware/auth");
+const { isAdmin } = require("../middleware/requireAdmin");
 
 // Helper — fetch nominations with vote counts
 async function fetchNominations(memberId = null) {
@@ -81,7 +82,7 @@ router.delete("/:id", auth, async (req, res) => {
   try {
     const { rows: [nom] } = await pool.query("SELECT nominated_by FROM nominations WHERE id=$1", [req.params.id]);
     if (!nom) return res.status(404).json({ error: "Not found" });
-    if (nom.nominated_by !== req.user.id && !req.user.is_admin)
+    if (nom.nominated_by !== req.user.id && !(await isAdmin(req.user.id)))
       return res.status(403).json({ error: "Forbidden" });
     await pool.query("DELETE FROM nominations WHERE id=$1", [req.params.id]);
     res.json(await fetchNominations(req.user.id));

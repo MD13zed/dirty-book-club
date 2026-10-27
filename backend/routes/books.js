@@ -1,8 +1,11 @@
 const router = require("express").Router();
-const { v4: uuidv4 } = require("uuid");
+const { randomUUID: uuidv4 } = require("crypto");
 const pool   = require("../db/pool");
 const { auth } = require("../middleware/auth");
 const { notifyBookAdded } = require("../discord");
+const { isAdmin } = require("../middleware/requireAdmin");
+
+const MAX_GENRES = 8; // keep in sync with MAX_GENRES in frontend/src/components/ui.jsx
 
 async function attachExtras(books) {
   if (!books.length) return books;
@@ -85,11 +88,11 @@ router.post("/", auth, async (req, res) => {
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
       [id, title.trim(), author||"", series||"", cover_url||"", date_read||null, req.user.id, total_pages||null, source]
     );
-    if (genres.slice(0, 5).length > 0) {
-      const genreVals = genres.slice(0, 5).map((g, i) => `($1,$${i + 2})`).join(",");
+    if (genres.slice(0, MAX_GENRES).length > 0) {
+      const genreVals = genres.slice(0, MAX_GENRES).map((g, i) => `($1,$${i + 2})`).join(",");
       await pool.query(
         `INSERT INTO book_genres (book_id,genre) VALUES ${genreVals} ON CONFLICT DO NOTHING`,
-        [id, ...genres.slice(0, 5)]
+        [id, ...genres.slice(0, MAX_GENRES)]
       );
     }
     if (trigger_warnings.length > 0) {
@@ -126,9 +129,9 @@ router.patch("/:id", auth, async (req, res) => {
     );
     if (Array.isArray(genres)) {
       await pool.query("DELETE FROM book_genres WHERE book_id=$1", [req.params.id]);
-      if (genres.slice(0,5).length > 0) {
-        const genreVals = genres.slice(0,5).map((g,i) => `($1,$${i+2})`).join(",");
-        await pool.query(`INSERT INTO book_genres (book_id,genre) VALUES ${genreVals} ON CONFLICT DO NOTHING`, [req.params.id, ...genres.slice(0,5)]);
+      if (genres.slice(0, MAX_GENRES).length > 0) {
+        const genreVals = genres.slice(0, MAX_GENRES).map((g,i) => `($1,$${i+2})`).join(",");
+        await pool.query(`INSERT INTO book_genres (book_id,genre) VALUES ${genreVals} ON CONFLICT DO NOTHING`, [req.params.id, ...genres.slice(0, MAX_GENRES)]);
       }
     }
     if (Array.isArray(trigger_warnings)) {
@@ -150,7 +153,7 @@ router.delete("/:id", auth, async (req, res) => {
   try {
     const { rows: [book] } = await pool.query("SELECT added_by FROM books WHERE id=$1", [req.params.id]);
     if (!book) return res.status(404).json({ error: "Not found" });
-    if (book.added_by !== req.user.id && !req.user.is_admin)
+    if (book.added_by !== req.user.id && !(await isAdmin(req.user.id)))
       return res.status(403).json({ error: "Forbidden" });
     await pool.query("DELETE FROM books WHERE id=$1", [req.params.id]);
     res.json({ deleted: true });

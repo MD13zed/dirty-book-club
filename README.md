@@ -12,7 +12,7 @@ A private book club library for tracking, reviewing, and discussing reads togeth
 - Add books with title, author, series, cover image, date read, total pages
 - **Search to pre-fill** — type a title or author to look up book details from Open Library automatically. Fills in title, author, cover, and page count in one click.
 - **Import from Goodreads** — upload your Goodreads library export CSV to bulk-import your read books. Covers fetched automatically via ISBN. Available to all members.
-- Up to **5 genres** per book from a list of 100+
+- Up to **8 genres** per book from a list of 350+
 - **Trigger warnings** — optional tags shown as a collapsed toggle on book cards. Once you expand and dismiss them, the toggle stays hidden for that book — per member, persists across sessions
 - All book cards are uniform size — books without covers show a styled placeholder
 - Sort by recently added, recently read, highest rated, title, author, series
@@ -118,7 +118,7 @@ Installable as a PWA on iOS (Safari → Add to Home Screen) and Android (Chrome 
 ```
 members           — Discord ID, username, avatar, bio, theme, admin flag
 books             — title, author, series, cover, date read, total pages, BOTM month
-book_genres       — up to 5 genres per book
+book_genres       — up to 8 genres per book
 book_tw           — trigger warning tags per book
 reviews           — rating + notes per member per book
 reading_progress  — status, current page, DNF reason per member per book

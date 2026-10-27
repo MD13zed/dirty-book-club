@@ -2,8 +2,27 @@ const router  = require("express").Router();
 const axios   = require("axios");
 const jwt     = require("jsonwebtoken");
 const pool    = require("../db/pool");
+const { discordRequest } = require("../discord");
 
 const DISCORD_API = "https://discord.com/api/v10";
+
+// Only people who are in the club's Discord server may log in. Asks Discord
+// (using the bot, which is already in the server) whether this user is a member.
+// Fails CLOSED in production if it can't be checked.
+async function isGuildMember(discordId) {
+  const guildId = process.env.DISCORD_GUILD_ID;
+  if (!guildId || !process.env.DISCORD_BOT_TOKEN) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("DISCORD_GUILD_ID / DISCORD_BOT_TOKEN not configured — refusing login");
+    }
+    console.warn("Guild membership check skipped (DISCORD_GUILD_ID / DISCORD_BOT_TOKEN not set, non-production)");
+    return true;
+  }
+  const { status, data } = await discordRequest("GET", `/guilds/${guildId}/members/${discordId}`);
+  if (status === 200) return true;
+  if (status === 404 && data?.code === 10007) return false;   // "Unknown Member" → not in the server
+  throw new Error(`Guild membership check failed: HTTP ${status} ${JSON.stringify(data)}`);
+}
 
 router.get("/discord", (req, res) => {
   const params = new URLSearchParams({
@@ -36,6 +55,12 @@ router.get("/discord/callback", async (req, res) => {
       headers: { Authorization: `Bearer ${tokenRes.data.access_token}` },
     });
     const { id: discordId, username, global_name, avatar } = userRes.data;
+
+    // Gate BEFORE touching the members table so outsiders never get an account.
+    if (!(await isGuildMember(discordId))) {
+      console.warn(`Login blocked — ${discordId} is not in the Discord server`);
+      return res.redirect(`${process.env.FRONTEND_URL}?error=not_in_server`);
+    }
 
     const displayName = global_name || username;
     const avatarUrl   = avatar

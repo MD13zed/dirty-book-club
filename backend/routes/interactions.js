@@ -1,7 +1,7 @@
 const router = require("express").Router();
 const { verifyKey } = require("discord-interactions");
 const pool = require("../db/pool");
-const { v4: uuidv4 } = require("uuid");
+const { randomUUID: uuidv4 } = require("crypto");
 const dialed = require("../dialed");
 
 const DIALED_TIMEZONE = process.env.DIALED_TIMEZONE || "America/New_York";
@@ -610,7 +610,7 @@ function handleGettingStarted(res) {
         value: [
           "**Add books** — search to pre-fill title, author, cover & page count from Open Library automatically",
           "**Goodreads import** — upload your export CSV to bulk-import your entire read shelf, covers fetched automatically by ISBN",
-          "**Genres & trigger warnings** — up to 5 genres per book from 100+ tags, TW collapsed behind a toggle on each card",
+          "**Genres & trigger warnings** — up to 8 genres per book from 350+ tags, TW collapsed behind a toggle on each card",
           "**Filter & sort** — by genre, reading status, rating, date read, or search by title/author/series",
           "",
           "> To import from Goodreads: **My Books → Import/Export → Export Library**, then click **Import from Goodreads** in the library header and upload the CSV.",

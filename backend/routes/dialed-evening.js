@@ -1,15 +1,11 @@
 const express = require("express");
 const router  = express.Router();
+const cronAuth = require("../middleware/cronAuth");
 const { postEveningLeaderboard } = require("../dialed");
 
-const CRON_SECRET = process.env.CRON_SECRET || "";
 
 // ── Route — called by cron-job.org, once every evening ─────────────────────
-router.get("/", async (req, res) => {
-  const auth = req.headers["authorization"] || "";
-  if (CRON_SECRET && auth !== `Bearer ${CRON_SECRET}`) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
+router.get("/", cronAuth, async (req, res) => {
   try {
     const result = await postEveningLeaderboard();
     res.json(result);
