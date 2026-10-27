@@ -2,6 +2,8 @@ const express = require("express");
 const router  = express.Router();
 const cronAuth = require("../middleware/cronAuth");
 const pool    = require("../db/pool");
+const { clubMonthStart, CLUB_TIMEZONE } = require("../clubtime");
+const { monthValue } = require("../botmMonth");
 
 const WEBHOOK  = process.env.DISCORD_WEBHOOK_ANNOUNCEMENTS;
 const SITE_URL = process.env.FRONTEND_URL || "https://thespicyshelf.vercel.app";
@@ -69,16 +71,20 @@ async function postDigest() {
   `);
 
   // ── Current BOTM ──────────────────────────────────────────────────────────
-  const { rows: [botm] } = await pool.query(`
+  // Picked in JS rather than TO_DATE() in SQL: one oddly-typed month used to make the whole digest fail
+  const { rows: botmRows } = await pool.query(`
     SELECT title, author, botm_month FROM books
     WHERE botm_month IS NOT NULL
-    ORDER BY TO_DATE(botm_month, 'Month YYYY') DESC LIMIT 1
+    ORDER BY added_at DESC
   `);
+  const botm = botmRows.reduce(
+    (best, r) => (!best || monthValue(r.botm_month) > monthValue(best.botm_month)) ? r : best,
+    undefined
+  );
 
   // ── Monthly applause — top readers & reviewers (calendar month to date) ────
-  const monthStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
-  const monthStart     = monthStartDate.toISOString();          // for reviews.updated_at (timestamptz)
-  const monthStartDay  = monthStartDate.toISOString().slice(0, 10); // for reading_progress.finished_at (date)
+  // "This month" starts at midnight on the 1st in club time (Aruba), not server/UTC time
+  const monthStartDay = clubMonthStart();   // YYYY-MM-01
 
   const { rows: topReaders } = await pool.query(`
     SELECT m.display_name, m.username, COUNT(*)::int AS books_finished
@@ -96,11 +102,11 @@ async function postDigest() {
     FROM reviews r
     JOIN members m ON m.id = r.member_id
     WHERE r.rating > 0
-      AND r.updated_at >= $1
+      AND r.updated_at >= ($1::date)::timestamp AT TIME ZONE $2
     GROUP BY m.id, m.display_name, m.username
     ORDER BY review_count DESC, LOWER(COALESCE(m.display_name, m.username)) ASC
     LIMIT 3
-  `, [monthStart]);
+  `, [monthStartDay, CLUB_TIMEZONE]);
 
   // ── Build embeds ──────────────────────────────────────────────────────────
   const embeds = [];

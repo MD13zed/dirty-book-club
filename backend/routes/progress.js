@@ -3,11 +3,21 @@ const { randomUUID: uuidv4 } = require("crypto");
 const pool   = require("../db/pool");
 const { auth } = require("../middleware/auth");
 const { notifyDnf } = require("../discord");
+const { fail, isUuid } = require("../http");
+const { clubToday } = require("../clubtime");
+
+const STATUSES = new Set(["want_to_read", "reading", "finished", "dnf"]);
+const validDate = (v) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  const d = new Date(`${v}T00:00:00Z`);
+  return !isNaN(d) && d.toISOString().slice(0, 10) === v;
+};
 
 // GET /api/progress?bookId=xxx  OR  own progress list
 router.get("/", auth, async (req, res) => {
   try {
     if (req.query.bookId) {
+      if (!isUuid(req.query.bookId)) return res.status(400).json({ error: "Invalid id" });
       const { rows } = await pool.query(
         `SELECT rp.*, m.display_name AS member_name, m.avatar_url AS member_avatar
          FROM reading_progress rp JOIN members m ON m.id=rp.member_id
@@ -23,18 +33,33 @@ router.get("/", auth, async (req, res) => {
       [req.user.id]
     );
     res.json(rows);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { fail(res, e); }
 });
 
 // POST /api/progress — upsert
 router.post("/", auth, async (req, res) => {
-  const { book_id, status, total_pages, current_page, started_at, finished_at, dnf_reason } = req.body;
-  if (!book_id) return res.status(400).json({ error: "book_id required" });
+  const { book_id, status, total_pages, current_page, started_at, finished_at, dnf_reason } = req.body || {};
+  if (!isUuid(book_id)) return res.status(400).json({ error: "book_id required" });
+
+  // Validate everything up front so bad input gets a clear message, not a database error
+  if (status !== undefined && status !== null && !STATUSES.has(status))
+    return res.status(400).json({ error: "Invalid status" });
+  const page = current_page ? Number(current_page) : 0;
+  if (!Number.isInteger(page) || page < 0 || page > 100000)
+    return res.status(400).json({ error: "Current page must be a whole number" });
+  const pages = total_pages ? Number(total_pages) : null;
+  if (pages !== null && (!Number.isInteger(pages) || pages < 1 || pages > 100000))
+    return res.status(400).json({ error: "Total pages must be a whole number" });
+  for (const [label, v] of [["Start date", started_at], ["Finish date", finished_at]]) {
+    if (v && !validDate(String(v))) return res.status(400).json({ error: `${label} must look like YYYY-MM-DD` });
+  }
+  if (dnf_reason != null && (typeof dnf_reason !== "string" || dnf_reason.length > 2000))
+    return res.status(400).json({ error: "DNF reason must be text (max 2000 characters)" });
 
   try {
     // A finished book always needs a finish date, otherwise it is invisible to
-    // the digest / leaderboards. Default to today if none was picked.
-    const today = new Date().toISOString().slice(0, 10);
+    // the digest / leaderboards. Default to today (club time, not UTC) if none was picked.
+    const today = clubToday();
     const finishedValue = status === "finished" ? (finished_at || today) : (finished_at || null);
 
     // Previous state, so we only announce a DNF once (not on every save)
@@ -55,8 +80,8 @@ router.post("/", auth, async (req, res) => {
          dnf_reason   = EXCLUDED.dnf_reason,
          updated_at   = CURRENT_TIMESTAMP`,
       [uuidv4(), book_id, req.user.id,
-       status||"want_to_read", total_pages||null,
-       current_page||0, started_at||null, finishedValue,
+       status||"want_to_read", pages,
+       page, started_at||null, finishedValue,
        dnf_reason||null]
     );
     const { rows: [row] } = await pool.query(
@@ -85,7 +110,7 @@ router.post("/", auth, async (req, res) => {
     }
 
     res.status(201).json(row);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { fail(res, e); }
 });
 
 module.exports = router;

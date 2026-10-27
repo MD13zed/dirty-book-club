@@ -27,12 +27,12 @@ CREATE TABLE IF NOT EXISTS books (
   date_read  DATE,
   total_pages INT         DEFAULT NULL,
   source     VARCHAR(50)  DEFAULT 'manual',
-  botm_month VARCHAR(20)  DEFAULT NULL,
+  botm_month VARCHAR(50)  DEFAULT NULL,
   added_by   UUID         REFERENCES members(id) ON DELETE SET NULL,
   added_at   TIMESTAMPTZ  DEFAULT CURRENT_TIMESTAMP
 );
 
--- Book genres (up to 3 per book)
+-- Book genres (up to 8 per book — enforced by the API)
 CREATE TABLE IF NOT EXISTS book_genres (
   book_id UUID         NOT NULL REFERENCES books(id) ON DELETE CASCADE,
   genre   VARCHAR(100) NOT NULL,
@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS reviews (
   member_id  UUID        NOT NULL REFERENCES members(id) ON DELETE CASCADE,
   rating     SMALLINT    DEFAULT 0 CHECK (rating BETWEEN 0 AND 5),
   notes      TEXT,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,  -- when first written (updated_at changes on every edit)
   updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   UNIQUE (book_id, member_id)
 );

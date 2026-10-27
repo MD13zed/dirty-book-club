@@ -1,4 +1,4 @@
-const CACHE     = "spicy-shelf-v5";
+const CACHE     = "spicy-shelf-v6";   // bumped: wipes older caches, including any that stored a login-token URL
 const OFFLINE   = "/offline.html";
 
 // App shell — files to cache on install
@@ -58,8 +58,11 @@ self.addEventListener("fetch", e => {
     e.respondWith(
       fetch(e.request)
         .then(res => {
-          const clone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
+          // Never cache the login-success page — its URL can carry the login token
+          if (!url.pathname.startsWith("/login-success")) {
+            const clone = res.clone();
+            caches.open(CACHE).then(c => c.put(e.request, clone));
+          }
           return res;
         })
         .catch(async () => {

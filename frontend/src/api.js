@@ -44,6 +44,7 @@ export const api = {
   addBook:    (book)      => req("POST",   "/books", book),
   updateBook: (id, data)  => req("PATCH",  `/books/${id}`, data),
   deleteBook: (id)        => req("DELETE", `/books/${id}`),
+  importBooks:(books)     => req("POST",   "/books/import", { books }),
 
   // Reviews
   getReviews:  (bookId)   => req("GET",    `/reviews${bookId ? `?bookId=${bookId}` : ""}`),

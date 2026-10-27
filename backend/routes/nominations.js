@@ -3,6 +3,9 @@ const { randomUUID: uuidv4 } = require("crypto");
 const pool   = require("../db/pool");
 const { auth } = require("../middleware/auth");
 const { isAdmin } = require("../middleware/requireAdmin");
+const { fail, isUuid, uuidParam } = require("../http");
+
+router.param("id", uuidParam);
 
 // Helper — fetch nominations with vote counts
 async function fetchNominations(memberId = null) {
@@ -31,13 +34,13 @@ async function fetchNominations(memberId = null) {
 router.get("/", auth, async (req, res) => {
   try {
     res.json(await fetchNominations(req.user.id));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { fail(res, e); }
 });
 
 // POST /api/nominations — nominate a book
 router.post("/", auth, async (req, res) => {
-  const { book_id } = req.body;
-  if (!book_id) return res.status(400).json({ error: "book_id required" });
+  const { book_id } = req.body || {};
+  if (!isUuid(book_id)) return res.status(400).json({ error: "book_id required" });
 
   try {
     // Check book exists and isn't already current BOTM
@@ -52,7 +55,7 @@ router.post("/", auth, async (req, res) => {
       [id, book_id, req.user.id]
     );
     res.status(201).json(await fetchNominations(req.user.id));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { fail(res, e); }
 });
 
 // POST /api/nominations/:id/vote — upvote
@@ -63,7 +66,7 @@ router.post("/:id/vote", auth, async (req, res) => {
       [req.params.id, req.user.id]
     );
     res.json(await fetchNominations(req.user.id));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { fail(res, e); }
 });
 
 // DELETE /api/nominations/:id/vote — remove vote
@@ -74,7 +77,7 @@ router.delete("/:id/vote", auth, async (req, res) => {
       [req.params.id, req.user.id]
     );
     res.json(await fetchNominations(req.user.id));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { fail(res, e); }
 });
 
 // DELETE /api/nominations/:id — remove nomination (own or admin)
@@ -86,7 +89,7 @@ router.delete("/:id", auth, async (req, res) => {
       return res.status(403).json({ error: "Forbidden" });
     await pool.query("DELETE FROM nominations WHERE id=$1", [req.params.id]);
     res.json(await fetchNominations(req.user.id));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { fail(res, e); }
 });
 
 module.exports = router;

@@ -23,7 +23,10 @@ export default function Admin() {
   const [tab,     setTab]     = useState("stats");
 
   const [botmBookId,        setBotmBookId]        = useState("");
-  const [botmMonth,         setBotmMonth]          = useState("");
+  const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const [botmMonthIdx,      setBotmMonthIdx]       = useState(new Date().getMonth());
+  const [botmYear,          setBotmYear]           = useState(new Date().getFullYear());
+  const botmMonth = `${MONTH_NAMES[botmMonthIdx]} ${botmYear}`;   // always "October 2026" — what the server and digest expect
   const [botmStatus,        setBotmStatus]         = useState("");
   const [announceToDiscord, setAnnounceToDiscord]  = useState(true);
 
@@ -50,7 +53,7 @@ export default function Admin() {
   };
 
   const announceBotm = async () => {
-    if (!botmBookId || !botmMonth.trim()) { setBotmStatus("Please select a book and enter a month."); return; }
+    if (!botmBookId) { setBotmStatus("Please select a book."); return; }
     try {
       setBotmStatus(announceToDiscord ? "Announcing..." : "Saving...");
       const r = await api.setBookOfTheMonth(botmBookId, botmMonth.trim(), announceToDiscord);
@@ -58,7 +61,7 @@ export default function Admin() {
       else if (!r?.announced)    setBotmStatus("⚠ Saved, but the Discord announcement failed" + (r?.warning ? ": " + r.warning : "") + ". Nothing was posted.");
       else if (!r?.thread)       setBotmStatus("⚠ Announced in Discord, but the discussion thread couldn't be created.");
       else                       setBotmStatus("✅ Announced and thread created in Discord!");
-      setBotmBookId(""); setBotmMonth("");
+      setBotmBookId("");
       api.getBooks().then(setBooks);
     } catch (e) { setBotmStatus("❌ Error: " + e.message); }
   };
@@ -219,9 +222,17 @@ export default function Admin() {
             <div style={{ fontFamily:"monospace", fontSize:11, color:"#d4af37", letterSpacing:1, marginBottom:18 }}>SET BOOK OF THE MONTH</div>
             <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
               <div>
-                <label style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, display:"block", marginBottom:6 }}>MONTH (e.g. June 2025)</label>
-                <input value={botmMonth} onChange={e=>setBotmMonth(e.target.value)} placeholder="June 2025"
-                  style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:4, color:C.text, fontFamily:"monospace", fontSize:13, padding:"9px 12px", width:"100%", boxSizing:"border-box" }} />
+                <label style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, display:"block", marginBottom:6 }}>MONTH</label>
+                <div style={{ display:"flex", gap:8 }}>
+                  <select value={botmMonthIdx} onChange={e=>setBotmMonthIdx(Number(e.target.value))}
+                    style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:4, color:C.text, fontFamily:"monospace", fontSize:13, padding:"9px 12px", flex:2, boxSizing:"border-box" }}>
+                    {MONTH_NAMES.map((m,i)=><option key={m} value={i}>{m}</option>)}
+                  </select>
+                  <select value={botmYear} onChange={e=>setBotmYear(Number(e.target.value))}
+                    style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:4, color:C.text, fontFamily:"monospace", fontSize:13, padding:"9px 12px", flex:1, boxSizing:"border-box" }}>
+                    {Array.from({length:5},(_,i)=>new Date().getFullYear()-3+i).map(y=><option key={y} value={y}>{y}</option>)}
+                  </select>
+                </div>
               </div>
               <div>
                 <label style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, display:"block", marginBottom:6 }}>SELECT BOOK</label>

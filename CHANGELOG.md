@@ -4,6 +4,36 @@ All notable changes to The Spicy Shelf are documented here.
 
 ---
 
+## [3.6.8] — 2026-10-27
+
+> **Run `backend/db/v5_migration.sql` in the Neon SQL Editor BEFORE deploying.** (Adds `reviews.created_at`; existing reviews are backfilled so past numbers don't change.)
+
+### Changed
+- **The library API is members-only.** `/api/books`, `/api/reviews` and `/api/members` (plus `/api/members/:id`) now need a login. Cover images stay public (browsers can't attach a login to an `<img>`).
+- **Page-number boxes** save once — 0.7 s after you stop typing or when you leave the box — instead of on every keystroke.
+- **Goodreads import** sends books in batches of 100 (`POST /api/books/import`) instead of one request per book, so big libraries no longer hit the rate limit, and books already in the library (same title + author) are skipped. The finish screen reports added / skipped / failed.
+- **Book of the Month month** is picked from month + year dropdowns, and the server only accepts `"October 2026"`-style values.
+- **Finish dates, "this month" and "last year" use club time (Aruba, `CLUB_TIMEZONE`)** instead of UTC. An evening finish on Dec 31 now counts for that year. Also applies to `/reading` in Discord.
+- **Login token travels in the URL fragment** (`/login-success#token=…`) so it stays out of browser history, server logs and the service-worker cache. Service worker cache bumped to v6 (clears older caches) and never stores the login page.
+- Adding/editing a book is all-or-nothing (transaction). A Discord notification failure no longer turns a saved book/review into an error (which led to duplicate retries).
+- `PATCH /api/books/:id` now returns 404 for a missing book and accepts partial updates.
+- `/stats` "most active this month" counts by finish date, matching the weekly digest, and its queries run in parallel (faster against Discord's 3-second limit).
+- Cover proxy: its own rate limit, 2 MB size cap, image-only responses. Cover uploads are capped at 4 MB (Vercel rejects larger bodies anyway).
+
+### Fixed
+- **Year-end stats** now include all of Dec 31 (ranges were `BETWEEN … AND '…-12-31'`, which stopped at midnight at the start of that day), use club time, and count reviews by when they were first written, not last edited.
+- **Year-end "Books of the Month" section was always empty** — it searched for text starting with the year, but months are stored as "June 2025". Fixed and sorted by month.
+- **Weekly digest** no longer fails if a Book of the Month month is oddly typed (sorting moved out of SQL).
+- Bad input now gets a clear 400 instead of a 500 with database text: ratings (whole number 0–5), notes length, progress status/pages/dates, bad ids, display name/bio length, unknown genres/trigger warnings (the API only accepts tags from the lists, plus tags a book already has). Raw error messages are no longer returned to the browser.
+- `/auth/me` and profile saves return an error instead of hanging if the database fails. Profile updates only change fields that were sent.
+
+### Notes
+- The API validates genres/trigger warnings against `backend/taxonomy.js`, generated from the lists in `ui.jsx`. After editing those lists run `node scripts/sync-taxonomy.js` (or `npm run sync-taxonomy`).
+- Optional new env var `CLUB_TIMEZONE` (default `America/Aruba`).
+- Not changed on purpose: who is allowed to edit a book (any member still can).
+
+---
+
 ## [3.6.7] — 2026-10-27
 
 ### Security

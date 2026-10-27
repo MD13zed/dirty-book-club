@@ -19,6 +19,9 @@ app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", rateLimit({ windowMs: 15*60*1000, max: 300, standardHeaders: true, legacyHeaders: false, skip: (req) => req.originalUrl.includes("/booksearch/cover") }));
+// The cover proxy is public (<img> tags can't send a login) and skips the general limiter,
+// so it gets its own: a page full of covers is fine, a hammering script is not.
+app.use("/api/booksearch/cover", rateLimit({ windowMs: 60*1000, max: 240, standardHeaders: true, legacyHeaders: false }));
 app.use("/auth", rateLimit({ windowMs: 15*60*1000, max: 20, standardHeaders: true, legacyHeaders: false }));
 
 app.use("/auth",              require("./routes/auth"));
@@ -45,7 +48,15 @@ app.get(["/health", "/api/health"], (req, res) =>
   res.json({ ok: true, ts: new Date(), uptime: Math.round(process.uptime()) })
 );
 app.use((req, res) => res.status(404).json({ error: "Not found" }));
-app.use((err, req, res, next) => { console.error(err); res.status(500).json({ error: err.message }); });
+app.use((err, req, res, next) => {
+  // Known "client did something wrong" errors get a real message; everything else is a generic 500
+  if (err.type === "entity.parse.failed")  return res.status(400).json({ error: "Invalid JSON" });
+  if (err.type === "entity.too.large")     return res.status(413).json({ error: "Request is too large" });
+  if (err.name === "MulterError")          return res.status(400).json({ error: err.code === "LIMIT_FILE_SIZE" ? "Image is too large (max 4 MB)" : "Upload failed" });
+  if (err.message === "Images only")       return res.status(400).json({ error: "Images only" });
+  console.error(err);
+  res.status(500).json({ error: "Something went wrong — please try again." });
+});
 
 if (require.main === module) {
   const PORT = parseInt(process.env.PORT || "3001");

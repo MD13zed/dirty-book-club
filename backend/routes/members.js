@@ -1,11 +1,14 @@
 const router = require("express").Router();
 const pool   = require("../db/pool");
 const { auth } = require("../middleware/auth");
+const { fail, uuidParam } = require("../http");
+
+router.param("id", uuidParam);
 
 const VALID_THEMES = ["dark-purple","midnight","rose-gold","forest","ocean","blood"];
 
 // GET /api/members
-router.get("/", async (req, res) => {
+router.get("/", auth, async (req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT m.id, m.display_name, m.avatar_url, m.bio, m.is_admin, m.theme, m.joined_at,
@@ -14,11 +17,11 @@ router.get("/", async (req, res) => {
        FROM members m ORDER BY m.joined_at ASC`
     );
     res.json(rows);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { fail(res, e); }
 });
 
 // GET /api/members/:id
-router.get("/:id", async (req, res) => {
+router.get("/:id", auth, async (req, res) => {
   try {
     const { rows: [m] } = await pool.query(
       `SELECT id, display_name, avatar_url, bio, is_admin, theme, joined_at
@@ -40,22 +43,42 @@ router.get("/:id", async (req, res) => {
       [req.params.id]
     );
     res.json({ ...m, reviews, progress });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { fail(res, e); }
 });
 
 // PATCH /api/members/me
 router.patch("/me", auth, async (req, res) => {
-  const { display_name, bio, theme } = req.body;
-  const safeTheme = VALID_THEMES.includes(theme) ? theme : "dark-purple";
-  await pool.query(
-    `UPDATE members SET display_name=$1, bio=$2, theme=$3, last_seen=CURRENT_TIMESTAMP WHERE id=$4`,
-    [display_name||null, bio||null, safeTheme, req.user.id]
-  );
-  const { rows: [m] } = await pool.query(
-    "SELECT id, display_name, avatar_url, bio, is_admin, theme FROM members WHERE id = $1",
-    [req.user.id]
-  );
-  res.json(m);
+  const body = req.body || {};
+  const has  = (k) => Object.prototype.hasOwnProperty.call(body, k);
+
+  // Only touch what was sent; blank display name / bio clears it (falls back to the Discord name)
+  const sets = [], vals = [];
+  if (has("display_name")) {
+    const v = body.display_name == null ? "" : String(body.display_name).trim();
+    if (v.length > 100) return res.status(400).json({ error: "Display name is too long (max 100 characters)" });
+    vals.push(v || null); sets.push(`display_name=$${vals.length}`);
+  }
+  if (has("bio")) {
+    const v = body.bio == null ? "" : String(body.bio).trim();
+    if (v.length > 1000) return res.status(400).json({ error: "Bio is too long (max 1000 characters)" });
+    vals.push(v || null); sets.push(`bio=$${vals.length}`);
+  }
+  if (has("theme")) {
+    vals.push(VALID_THEMES.includes(body.theme) ? body.theme : "dark-purple"); sets.push(`theme=$${vals.length}`);
+  }
+
+  try {
+    vals.push(req.user.id);
+    await pool.query(
+      `UPDATE members SET ${sets.concat("last_seen=CURRENT_TIMESTAMP").join(", ")} WHERE id=$${vals.length}`,
+      vals
+    );
+    const { rows: [m] } = await pool.query(
+      "SELECT id, display_name, avatar_url, bio, is_admin, theme FROM members WHERE id = $1",
+      [req.user.id]
+    );
+    res.json(m);
+  } catch (e) { fail(res, e); }
 });
 
 module.exports = router;

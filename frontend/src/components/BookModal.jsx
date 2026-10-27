@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
@@ -179,6 +179,44 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
       setTimeout(() => setProgressToast(null), 2000);
     }
   };
+
+  // ── Page-number boxes ──────────────────────────────────────────────────────
+  // Typing used to save on every keystroke (typing "250" = 3 saves + 3 reloads, and stale
+  // responses could flicker the number back). Now the box keeps its own text and saves once —
+  // 0.7s after you stop typing, or immediately when you leave the box.
+  const [curPageIn, setCurPageIn] = useState("");
+  const [totPageIn, setTotPageIn] = useState("");
+  const pageTimer = useRef(null);
+  const pageFocused = useRef(false);
+
+  useEffect(() => {
+    if (pageFocused.current) return;   // never overwrite what someone is typing
+    setCurPageIn(String(progress?.current_page ?? 0));
+    setTotPageIn(String(progress?.total_pages || book.total_pages || ""));
+  }, [progress?.current_page, progress?.total_pages, book.total_pages]);
+
+  const pageValue = (field, text) => {
+    const n = parseInt(text, 10);
+    return field === "current_page" ? (n >= 0 ? n : 0) : (n > 0 ? n : null);
+  };
+  const savePage = (field, text) => {
+    const val  = pageValue(field, text);
+    const prev = field === "current_page" ? (progress?.current_page ?? 0) : (progress?.total_pages ?? null);
+    if (val === prev) return;
+    saveProgress({ [field]: val }).catch(() => {});
+  };
+  const onPageType = (field, setter) => (e) => {
+    const text = e.target.value;
+    setter(text);
+    clearTimeout(pageTimer.current);
+    pageTimer.current = setTimeout(() => savePage(field, text), 700);
+  };
+  const onPageBlur = (field, text) => {
+    clearTimeout(pageTimer.current);
+    pageFocused.current = false;
+    savePage(field, text);
+  };
+  useEffect(() => () => clearTimeout(pageTimer.current), []);
 
   const [dnfState, setDnfState] = useState(""); // "", "saving", "saved", or an error message
   const saveDnfReason = async () => {
@@ -379,13 +417,17 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
                 <div style={{ display:"flex", gap:10 }}>
                   <div style={{ flex:1 }}>
                     <label style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, display:"block", marginBottom:4 }}>CURRENT PAGE</label>
-                    <input type="number" min={0} value={progress?.current_page||0}
-                      onChange={e=>saveProgress({current_page:parseInt(e.target.value)||0})} style={INP(C)} />
+                    <input type="number" min={0} value={curPageIn}
+                      onFocus={()=>{ pageFocused.current = true; }}
+                      onChange={onPageType("current_page", setCurPageIn)}
+                      onBlur={()=>onPageBlur("current_page", curPageIn)} style={INP(C)} />
                   </div>
                   <div style={{ flex:1 }}>
                     <label style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, display:"block", marginBottom:4 }}>TOTAL PAGES</label>
-                    <input type="number" min={1} value={progress?.total_pages||book.total_pages||""}
-                      onChange={e=>saveProgress({total_pages:parseInt(e.target.value)||null})} placeholder="e.g. 400" style={INP(C)} />
+                    <input type="number" min={1} value={totPageIn}
+                      onFocus={()=>{ pageFocused.current = true; }}
+                      onChange={onPageType("total_pages", setTotPageIn)}
+                      onBlur={()=>onPageBlur("total_pages", totPageIn)} placeholder="e.g. 400" style={INP(C)} />
                   </div>
                 </div>
               )}

@@ -145,9 +145,15 @@ router.get("/cover", async (req, res) => {
     const upstream = await axios.get(parsed.toString(), {
       responseType: "arraybuffer",
       timeout: TIMEOUT,
+      maxRedirects: 3,
+      maxContentLength: 2 * 1024 * 1024,   // covers are small; refuse anything big
+      maxBodyLength:    2 * 1024 * 1024,
       headers: { "User-Agent": UA },
     });
-    res.set("Content-Type", upstream.headers["content-type"] || "image/jpeg");
+    const type = String(upstream.headers["content-type"] || "");
+    if (!/^image\//i.test(type)) return res.status(502).send("not an image");   // never relay non-image content
+    res.set("Content-Type", type);
+    res.set("X-Content-Type-Options", "nosniff");
     res.set("Cache-Control", "public, max-age=604800, immutable");
     res.send(Buffer.from(upstream.data));
   } catch (e) {

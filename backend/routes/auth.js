@@ -3,6 +3,7 @@ const axios   = require("axios");
 const jwt     = require("jsonwebtoken");
 const pool    = require("../db/pool");
 const { discordRequest } = require("../discord");
+const { fail } = require("../http");
 
 const DISCORD_API = "https://discord.com/api/v10";
 
@@ -90,7 +91,9 @@ router.get("/discord/callback", async (req, res) => {
       { expiresIn: "30d" }
     );
 
-    res.redirect(`${process.env.FRONTEND_URL}/login-success?token=${token}`);
+    // Token goes in the URL *fragment* (#…), which browsers never send to servers,
+    // so it stays out of server logs and the service-worker cache.
+    res.redirect(`${process.env.FRONTEND_URL}/login-success#token=${token}`);
   } catch (err) {
     console.error("Discord OAuth error:", err.response?.data || err.message);
     res.redirect(`${process.env.FRONTEND_URL}?error=oauth_failed`);
@@ -98,13 +101,15 @@ router.get("/discord/callback", async (req, res) => {
 });
 
 router.get("/me", require("../middleware/auth").auth, async (req, res) => {
-  const { rows } = await pool.query(
-    `SELECT id, discord_id, username, display_name, avatar_url, bio, is_admin, theme, joined_at
-     FROM members WHERE id = $1`,
-    [req.user.id]
-  );
-  if (!rows.length) return res.status(404).json({ error: "Not found" });
-  res.json(rows[0]);
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, discord_id, username, display_name, avatar_url, bio, is_admin, theme, joined_at
+       FROM members WHERE id = $1`,
+      [req.user.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: "Not found" });
+    res.json(rows[0]);
+  } catch (e) { fail(res, e); }
 });
 
 module.exports = router;

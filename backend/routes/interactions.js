@@ -3,6 +3,7 @@ const { verifyKey } = require("discord-interactions");
 const pool = require("../db/pool");
 const { randomUUID: uuidv4 } = require("crypto");
 const dialed = require("../dialed");
+const { clubToday, clubMonthStart } = require("../clubtime");
 
 const DIALED_TIMEZONE = process.env.DIALED_TIMEZONE || "America/New_York";
 
@@ -118,51 +119,58 @@ async function handleBotm(res) {
 }
 
 async function handleStats(res) {
-  const { rows:[s] } = await pool.query(`
-    SELECT
-      (SELECT COUNT(*)::int FROM books)                                        AS books,
-      (SELECT COUNT(*)::int FROM reviews)                                      AS reviews,
-      (SELECT COUNT(*)::int FROM members)                                      AS members,
-      (SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE rating > 0)    AS avg_rating,
-      (SELECT COUNT(*)::int FROM reading_progress WHERE status='finished')     AS finished,
-      (SELECT COUNT(*)::int FROM reading_progress WHERE status='reading')      AS reading_now
-  `);
-
-  // Top rated book (min 2 reviews)
-  const { rows:[topRated] } = await pool.query(`
-    SELECT b.title, b.author, ROUND(AVG(r.rating)::numeric,1) AS avg, COUNT(*)::int AS cnt
-    FROM reviews r JOIN books b ON b.id = r.book_id
-    WHERE r.rating > 0
-    GROUP BY b.id, b.title, b.author
-    HAVING COUNT(*) >= 2
-    ORDER BY avg DESC, cnt DESC LIMIT 1
-  `);
-
-  // Most reviewed book
-  const { rows:[mostReviewed] } = await pool.query(`
-    SELECT b.title, COUNT(*)::int AS cnt
-    FROM reviews r JOIN books b ON b.id = r.book_id
-    WHERE r.rating > 0
-    GROUP BY b.id, b.title
-    ORDER BY cnt DESC LIMIT 1
-  `);
-
-  // Most active reader this month (most books finished)
-  const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0,0,0,0);
-  const { rows:[topReader] } = await pool.query(`
-    SELECT m.display_name, m.username, COUNT(*)::int AS cnt
-    FROM reading_progress rp JOIN members m ON m.id = rp.member_id
-    WHERE rp.status = 'finished' AND rp.updated_at >= $1
-    GROUP BY m.id, m.display_name, m.username
-    ORDER BY cnt DESC LIMIT 1
-  `, [startOfMonth.toISOString()]);
-
-  // Total pages read across all members
-  const { rows:[pages] } = await pool.query(`
-    SELECT COALESCE(SUM(b.total_pages),0)::int AS total
-    FROM reading_progress rp JOIN books b ON b.id = rp.book_id
-    WHERE rp.status = 'finished' AND b.total_pages IS NOT NULL
-  `);
+  // The queries don't depend on each other, so run them side by side — one round-trip
+  // of waiting instead of five (Discord only gives us 3 seconds to answer).
+  const [
+    { rows:[s] },
+    { rows:[topRated] },
+    { rows:[mostReviewed] },
+    { rows:[topReader] },
+    { rows:[pages] },
+  ] = await Promise.all([
+    pool.query(`
+      SELECT
+        (SELECT COUNT(*)::int FROM books)                                        AS books,
+        (SELECT COUNT(*)::int FROM reviews)                                      AS reviews,
+        (SELECT COUNT(*)::int FROM members)                                      AS members,
+        (SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE rating > 0)    AS avg_rating,
+        (SELECT COUNT(*)::int FROM reading_progress WHERE status='finished')     AS finished,
+        (SELECT COUNT(*)::int FROM reading_progress WHERE status='reading')      AS reading_now
+    `),
+    // Top rated book (min 2 reviews)
+    pool.query(`
+      SELECT b.title, b.author, ROUND(AVG(r.rating)::numeric,1) AS avg, COUNT(*)::int AS cnt
+      FROM reviews r JOIN books b ON b.id = r.book_id
+      WHERE r.rating > 0
+      GROUP BY b.id, b.title, b.author
+      HAVING COUNT(*) >= 2
+      ORDER BY avg DESC, cnt DESC LIMIT 1
+    `),
+    // Most reviewed book
+    pool.query(`
+      SELECT b.title, COUNT(*)::int AS cnt
+      FROM reviews r JOIN books b ON b.id = r.book_id
+      WHERE r.rating > 0
+      GROUP BY b.id, b.title
+      ORDER BY cnt DESC LIMIT 1
+    `),
+    // Most active reader this month — by FINISH date (same rule as the weekly digest),
+    // so editing an already-finished book can't inflate the count. Month is in club time.
+    pool.query(`
+      SELECT m.display_name, m.username, COUNT(*)::int AS cnt
+      FROM reading_progress rp JOIN members m ON m.id = rp.member_id
+      WHERE rp.status = 'finished'
+        AND COALESCE(rp.finished_at, rp.updated_at::date) >= $1::date
+      GROUP BY m.id, m.display_name, m.username
+      ORDER BY cnt DESC LIMIT 1
+    `, [clubMonthStart()]),
+    // Total pages read across all members
+    pool.query(`
+      SELECT COALESCE(SUM(b.total_pages),0)::int AS total
+      FROM reading_progress rp JOIN books b ON b.id = rp.book_id
+      WHERE rp.status = 'finished' AND b.total_pages IS NOT NULL
+    `),
+  ]);
 
   const fields = [
     { name:"📚 Books",              value:String(s.books),                        inline:true },
@@ -340,7 +348,7 @@ async function handleReading(res, options, discordId) {
   if (!memberId) return res.json(err(`You need to log in first: ${SITE_URL}`));
   const book = await findBook(titleQuery);
   if (!book) return res.json(err(`No book found matching **"${titleQuery}"**\nTry \`/search\` to find the exact title.`));
-  const today = new Date().toISOString().slice(0, 10);
+  const today = clubToday();   // club time (Aruba), not UTC
   await pool.query(
     `INSERT INTO reading_progress (id, book_id, member_id, status, current_page, started_at, finished_at)
      VALUES ($1,$2,$3,$4,$5,$6,$7)

@@ -10,3 +10,20 @@ const pool = new Pool({
 });
 
 module.exports = pool;
+
+// Run several queries as one all-or-nothing unit:
+//   await pool.withTx(async db => { await db.query(...); await db.query(...); })
+pool.withTx = async function withTx(fn) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await fn(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (e) {
+    try { await client.query("ROLLBACK"); } catch {}
+    throw e;
+  } finally {
+    client.release();
+  }
+};

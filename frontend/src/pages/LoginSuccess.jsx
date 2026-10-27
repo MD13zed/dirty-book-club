@@ -9,9 +9,12 @@ export default function LoginSuccess() {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
-    window.history.replaceState(null, "", window.location.pathname);
+    // The token arrives in the URL fragment (#token=…), which never reaches servers or logs.
+    // The old ?token=… form is still accepted so a login that started before an update still works.
+    const fromHash  = new URLSearchParams(window.location.hash.replace(/^#/, "")).get("token");
+    const fromQuery = new URLSearchParams(window.location.search).get("token");
+    const token = fromHash || fromQuery;
+    window.history.replaceState(null, "", window.location.pathname);   // wipe it from the address bar/history immediately
 
     if (!token) { navigate("/"); return; }
 

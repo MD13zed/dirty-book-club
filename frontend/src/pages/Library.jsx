@@ -226,40 +226,52 @@ function CsvImportModal({ C, onClose, onImported, existingBooks }) {
     setSelected(s);
   };
 
+  const [result, setResult] = useState({ added: 0, skipped: 0, failed: 0 });
+
   const doImport = async () => {
     const toImport = parsed.filter((_, i) => selected.has(i));
     setProgress({ done: 0, total: toImport.length, current: "" });
     setStage("importing");
 
-    const added = [];
-    for (let i = 0; i < toImport.length; i++) {
-      const book = toImport[i];
-      setProgress({ done: i, total: toImport.length, current: book.title });
-      try {
-        // Fetch cover if we have an ISBN
-        let cover_url = book.cover_url;
-        if (!cover_url && book.isbn) {
-          cover_url = await fetchCoverByISBN(book.isbn);
+    // Step 1 — look up covers, four at a time (these go to Open Library, not to our server)
+    const prepared = toImport.map(b => ({ ...b }));
+    let next = 0, finished = 0;
+    const worker = async () => {
+      while (next < prepared.length) {
+        const book = prepared[next++];
+        setProgress(p => ({ ...p, current: book.title }));
+        if (!book.cover_url && book.isbn) {
+          try { book.cover_url = await fetchCoverByISBN(book.isbn); } catch { /* no cover is fine */ }
         }
-        const created = await api.addBook({
-          title:      book.title,
-          author:     book.author,
-          series:     book.series,
-          date_read:  book.date_read,
-          total_pages: book.total_pages,
-          cover_url,
-          genres:     [],
-          trigger_warnings: [],
-          silent:     true,
-          source:     "csv",
-        });
-        added.push(created);
+        finished++;
+        setProgress(p => ({ ...p, done: finished }));
+      }
+    };
+    await Promise.all(Array.from({ length: 4 }, worker));
+
+    // Step 2 — save in batches: one request per 100 books instead of one per book,
+    // so big libraries don't run into the request limit. The server skips books
+    // that are already in the library.
+    setProgress(p => ({ ...p, current: "Saving to the library…" }));
+    const added = [];
+    let skippedDup = 0, failed = 0;
+    for (let i = 0; i < prepared.length; i += 100) {
+      const chunk = prepared.slice(i, i + 100).map(b => ({
+        title: b.title, author: b.author, series: b.series,
+        date_read: b.date_read, total_pages: b.total_pages, cover_url: b.cover_url || "",
+      }));
+      try {
+        const r = await api.importBooks(chunk);
+        added.push(...r.added);
+        skippedDup += r.skipped;
+        failed     += r.invalid;
       } catch (err) {
-        console.warn(`Skipped "${book.title}":`, err.message);
+        console.warn("Import batch failed:", err.message);
+        failed += chunk.length;
       }
     }
 
-    setProgress({ done: toImport.length, total: toImport.length, current: "" });
+    setResult({ added: added.length, skipped: skippedDup, failed });
     setStage("done");
     onImported(added);
   };
@@ -360,7 +372,10 @@ function CsvImportModal({ C, onClose, onImported, existingBooks }) {
             <div style={{ fontSize:40, marginBottom:12 }}>🎉</div>
             <div style={{ fontFamily:"'Playfair Display',serif", fontSize:18, color:C.accent }}>Import complete!</div>
             <div style={{ fontFamily:"'EB Garamond',serif", fontSize:14, color:C.dim, marginTop:8 }}>
-              {progress.total} book{progress.total!==1?"s":""} added to the library. You can add genres and trigger warnings by clicking into each book.
+              {result.added} book{result.added!==1?"s":""} added to the library.
+              {result.skipped > 0 && ` ${result.skipped} already in the library ${result.skipped!==1?"were":"was"} skipped.`}
+              {result.failed > 0 && ` ${result.failed} couldn't be imported.`}
+              {" "}You can add genres and trigger warnings by clicking into each book.
             </div>
             <button onClick={onClose} style={{ background:`linear-gradient(135deg,${C.accent},${C.accent2})`, border:"none", borderRadius:3, color:C.bg, fontFamily:"'Playfair Display',serif", fontSize:13, fontWeight:700, padding:"9px 22px", cursor:"pointer", marginTop:20 }}>
               Done

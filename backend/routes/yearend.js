@@ -2,6 +2,8 @@ const express = require("express");
 const router  = express.Router();
 const cronAuth = require("../middleware/cronAuth");
 const pool    = require("../db/pool");
+const { clubYear, CLUB_TIMEZONE } = require("../clubtime");
+const { monthValue } = require("../botmMonth");
 
 const WEBHOOK     = process.env.DISCORD_WEBHOOK_ANNOUNCEMENTS;
 const SITE_URL    = process.env.FRONTEND_URL || "https://thespicyshelf.vercel.app";
@@ -9,25 +11,31 @@ const SITE_URL    = process.env.FRONTEND_URL || "https://thespicyshelf.vercel.ap
 const color = { purple:0xb08af0, pink:0xd060a0, gold:0xffd700, green:0x409060, red:0xe83030 };
 
 async function postYearEnd() {
-  const now  = new Date();
-  const year = now.getFullYear() - 1; // the year that just ended
-  const yearStart = `${year}-01-01`;
-  const yearEnd   = `${year}-12-31`;
+  const year = clubYear() - 1;                 // the year that just ended, in club time (Aruba)
+  const yearStart     = `${year}-01-01`;
+  const nextYearStart = `${year + 1}-01-01`;   // ranges are "from start up to, not including, next Jan 1"
+  const TZ = CLUB_TIMEZONE;
+
+  // Reviews are counted by when they were FIRST written (created_at, added in v5_migration.sql);
+  // editing an old review later must not move it into a different year.
+  // Falls back to updated_at for any row without created_at.
 
   // ── Books finished this year ───────────────────────────────────────────────
   const { rows: [{ books_read }] } = await pool.query(`
     SELECT COUNT(DISTINCT rp.book_id)::int AS books_read
     FROM reading_progress rp
     WHERE rp.status = 'finished'
-      AND rp.finished_at BETWEEN $1 AND $2
-  `, [yearStart, yearEnd]);
+      AND rp.finished_at >= $1::date AND rp.finished_at < $2::date
+  `, [yearStart, nextYearStart]);
 
   // ── Total reviews left this year ───────────────────────────────────────────
   const { rows: [{ reviews_left }] } = await pool.query(`
     SELECT COUNT(*)::int AS reviews_left
     FROM reviews
-    WHERE updated_at BETWEEN $1 AND $2 AND rating > 0
-  `, [yearStart, yearEnd]);
+    WHERE COALESCE(created_at, updated_at) >= ($1::date)::timestamp AT TIME ZONE $3
+      AND COALESCE(created_at, updated_at) <  ($2::date)::timestamp AT TIME ZONE $3
+      AND rating > 0
+  `, [yearStart, nextYearStart, TZ]);
 
   // ── Total pages read this year ─────────────────────────────────────────────
   const { rows: [{ pages_read }] } = await pool.query(`
@@ -35,9 +43,9 @@ async function postYearEnd() {
     FROM reading_progress rp
     JOIN books b ON b.id = rp.book_id
     WHERE rp.status = 'finished'
-      AND rp.finished_at BETWEEN $1 AND $2
+      AND rp.finished_at >= $1::date AND rp.finished_at < $2::date
       AND b.total_pages IS NOT NULL
-  `, [yearStart, yearEnd]);
+  `, [yearStart, nextYearStart]);
 
   // ── Highest rated book of the year ────────────────────────────────────────
   const { rows: [topBook] } = await pool.query(`
@@ -46,12 +54,14 @@ async function postYearEnd() {
            COUNT(r.id)::int AS review_count
     FROM reviews r
     JOIN books b ON b.id = r.book_id
-    WHERE r.updated_at BETWEEN $1 AND $2 AND r.rating > 0
+    WHERE COALESCE(r.created_at, r.updated_at) >= ($1::date)::timestamp AT TIME ZONE $3
+      AND COALESCE(r.created_at, r.updated_at) <  ($2::date)::timestamp AT TIME ZONE $3
+      AND r.rating > 0
     GROUP BY b.id, b.title, b.author, b.cover_url
     HAVING COUNT(r.id) >= 2
     ORDER BY avg_rating DESC, review_count DESC
     LIMIT 1
-  `, [yearStart, yearEnd]);
+  `, [yearStart, nextYearStart, TZ]);
 
   // ── Most reviewed book ────────────────────────────────────────────────────
   const { rows: [mostReviewed] } = await pool.query(`
@@ -59,11 +69,13 @@ async function postYearEnd() {
            ROUND(AVG(r.rating)::numeric, 1) AS avg_rating
     FROM reviews r
     JOIN books b ON b.id = r.book_id
-    WHERE r.updated_at BETWEEN $1 AND $2 AND r.rating > 0
+    WHERE COALESCE(r.created_at, r.updated_at) >= ($1::date)::timestamp AT TIME ZONE $3
+      AND COALESCE(r.created_at, r.updated_at) <  ($2::date)::timestamp AT TIME ZONE $3
+      AND r.rating > 0
     GROUP BY b.id, b.title, b.author
     ORDER BY review_count DESC
     LIMIT 1
-  `, [yearStart, yearEnd]);
+  `, [yearStart, nextYearStart, TZ]);
 
   // ── Most active reader (most books finished) ───────────────────────────────
   const { rows: [topReader] } = await pool.query(`
@@ -71,11 +83,11 @@ async function postYearEnd() {
     FROM reading_progress rp
     JOIN members m ON m.id = rp.member_id
     WHERE rp.status = 'finished'
-      AND rp.finished_at BETWEEN $1 AND $2
+      AND rp.finished_at >= $1::date AND rp.finished_at < $2::date
     GROUP BY m.id, m.display_name, m.username
     ORDER BY books_finished DESC
     LIMIT 1
-  `, [yearStart, yearEnd]);
+  `, [yearStart, nextYearStart]);
 
   // ── Top genre of the year ─────────────────────────────────────────────────
   const { rows: [topGenre] } = await pool.query(`
@@ -84,19 +96,19 @@ async function postYearEnd() {
     JOIN books b ON b.id = bg.book_id
     JOIN reading_progress rp ON rp.book_id = b.id
     WHERE rp.status = 'finished'
-      AND rp.finished_at BETWEEN $1 AND $2
+      AND rp.finished_at >= $1::date AND rp.finished_at < $2::date
     GROUP BY bg.genre
     ORDER BY cnt DESC
     LIMIT 1
-  `, [yearStart, yearEnd]);
+  `, [yearStart, nextYearStart]);
 
   // ── Books of the Month this year ──────────────────────────────────────────
   const { rows: botms } = await pool.query(`
     SELECT title, author, botm_month
     FROM books
     WHERE botm_month LIKE $1
-    ORDER BY botm_month ASC
-  `, [`${year}%`]);
+  `, [`% ${year}`]);   // botm_month looks like "June 2025" — the year comes last
+  botms.sort((a, b) => monthValue(a.botm_month) - monthValue(b.botm_month));
 
   // ── Build embeds ──────────────────────────────────────────────────────────
   const embeds = [];

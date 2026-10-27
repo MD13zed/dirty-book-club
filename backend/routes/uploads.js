@@ -11,7 +11,7 @@ cloudinary.config({
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 4 * 1024 * 1024 },   // Vercel rejects request bodies over ~4.5 MB anyway
   fileFilter(req, file, cb) {
     if (!file.mimetype.startsWith("image/")) return cb(new Error("Images only"));
     cb(null, true);
@@ -38,7 +38,8 @@ router.post("/cover", auth, upload.single("cover"), async (req, res) => {
 
     res.json({ url: result.secure_url });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error("Cover upload failed:", e.message);
+    res.status(500).json({ error: "Upload failed — please try again." });
   }
 });
 

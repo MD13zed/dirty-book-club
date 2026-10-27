@@ -3,6 +3,11 @@ const pool         = require("../db/pool");
 const { auth }     = require("../middleware/auth");
 const requireAdmin = require("../middleware/requireAdmin");
 const { announceBookOfTheMonth, postTbrPoll } = require("../discord");
+const { fail, isUuid, uuidParam } = require("../http");
+
+const MONTH_RE = /^(January|February|March|April|May|June|July|August|September|October|November|December) \d{4}$/;
+
+router.param("id", uuidParam);
 
 router.use(auth, requireAdmin);
 
@@ -42,7 +47,7 @@ router.get("/stats", async (req, res) => {
     );
 
     res.json({ total_books, total_reviews, total_members, avg_rating, total_pages, top_rated: top_rated||null, top_books, genre_counts, recent_activity });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { fail(res, e); }
 });
 
 // GET /api/admin/members
@@ -54,7 +59,7 @@ router.get("/members", async (req, res) => {
        FROM members ORDER BY joined_at DESC`
     );
     res.json(rows);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { fail(res, e); }
 });
 
 // PATCH /api/admin/members/:id/admin
@@ -63,7 +68,7 @@ router.patch("/members/:id/admin", async (req, res) => {
     if (req.params.id === req.user.id) return res.status(400).json({ error: "Cannot change own admin status" });
     await pool.query("UPDATE members SET is_admin=$1 WHERE id=$2", [!!req.body.is_admin, req.params.id]);
     res.json({ updated: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { fail(res, e); }
 });
 
 // DELETE /api/admin/members/:id
@@ -72,7 +77,7 @@ router.delete("/members/:id", async (req, res) => {
     if (req.params.id === req.user.id) return res.status(400).json({ error: "Cannot delete yourself" });
     await pool.query("DELETE FROM members WHERE id=$1", [req.params.id]);
     res.json({ deleted: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { fail(res, e); }
 });
 
 // DELETE /api/admin/books/:id
@@ -80,14 +85,16 @@ router.delete("/books/:id", async (req, res) => {
   try {
     await pool.query("DELETE FROM books WHERE id=$1", [req.params.id]);
     res.json({ deleted: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { fail(res, e); }
 });
 
 // POST /api/admin/botm
 router.post("/botm", async (req, res) => {
   try {
-    const { book_id, month, announce = true } = req.body;
-    if (!book_id || !month) return res.status(400).json({ error: "book_id and month required" });
+    const { book_id, month, announce = true } = req.body || {};
+    if (!isUuid(book_id) || !month) return res.status(400).json({ error: "book_id and month required" });
+    // The weekly digest sorts Book-of-the-Month picks by this, so it has to be "Month YYYY"
+    if (!MONTH_RE.test(month)) return res.status(400).json({ error: 'Month must look like "October 2026"' });
 
     const { rows: [book] } = await pool.query("SELECT * FROM books WHERE id=$1", [book_id]);
     if (!book) return res.status(404).json({ error: "Book not found" });
@@ -123,14 +130,15 @@ router.post("/botm", async (req, res) => {
       month,
       book_title: book.title,
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { fail(res, e); }
 });
 
 // POST /api/admin/tbr-poll — post a Discord poll from nominations
 router.post("/tbr-poll", async (req, res) => {
   try {
-    const { book_ids, duration_hours = 48 } = req.body;
-    if (!book_ids?.length) return res.status(400).json({ error: "book_ids required" });
+    const { book_ids, duration_hours = 48 } = req.body || {};
+    if (!Array.isArray(book_ids) || !book_ids.length) return res.status(400).json({ error: "book_ids required" });
+    if (!book_ids.every(isUuid)) return res.status(400).json({ error: "Invalid book id" });
     if (book_ids.length < 2) return res.status(400).json({ error: "Need at least 2 books for a poll" });
     if (book_ids.length > 10) return res.status(400).json({ error: "Max 10 books per poll" });
 
@@ -144,7 +152,7 @@ router.post("/tbr-poll", async (req, res) => {
     const result = await postTbrPoll({ books, duration_hours });
     if (!result.ok) return res.status(502).json({ error: `Discord rejected the poll: ${result.error}` });
     res.json({ posted: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { fail(res, e); }
 });
 
 module.exports = router;
