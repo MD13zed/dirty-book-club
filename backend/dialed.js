@@ -1,5 +1,6 @@
 // Dialed.gg daily score tracking — morning game reminder (no pings), end-of-day final leaderboard, and on-demand snapshot
 const pool = require("./db/pool");
+const { md } = require("./text");
 const { discordAPI } = require("./discord");
 
 const CHANNEL_ID = process.env.DIALED_CHANNEL_ID;
@@ -45,7 +46,7 @@ async function getTodayLeaderboard(todayStr = getDialedDate()) {
     SELECT m.discord_id, m.display_name, m.username, ds.score
     FROM dialed_scores ds JOIN members m ON m.id = ds.member_id
     WHERE ds.play_date = $1::date
-    ORDER BY ds.score DESC
+    ORDER BY ds.score DESC, ds.submitted_at ASC, m.id
     LIMIT 5
   `, [todayStr]);
   return rows;
@@ -56,7 +57,7 @@ async function getYesterdayWinner(todayStr = getDialedDate()) {
     SELECT m.discord_id, ds.score
     FROM dialed_scores ds JOIN members m ON m.id = ds.member_id
     WHERE ds.play_date = ($1::date - 1)
-    ORDER BY ds.score DESC LIMIT 1
+    ORDER BY ds.score DESC, ds.submitted_at ASC, m.id LIMIT 1
   `, [todayStr]);
   return w || null;
 }
@@ -83,7 +84,7 @@ function buildContent({ yesterdayWinner, today, final = false }) {
   for (let i = 0; i < 5; i++) {
     const entry = today[i];
     if (entry) {
-      const name = entry.display_name || entry.username;
+      const name = md(entry.display_name || entry.username);
       lines.push(`${MEDALS[i]} **${name}** — \`${Number(entry.score).toFixed(2)}\` / 50`);
     } else {
       lines.push(`${MEDALS[i]} **TBD** — \`0\` / 50`);
@@ -143,4 +144,4 @@ async function getLeaderboardSnapshot() {
   return buildContent({ yesterdayWinner, today });
 }
 
-module.exports = { postMorningReminder, postEveningLeaderboard, getLeaderboardSnapshot };
+module.exports = { postMorningReminder, postEveningLeaderboard, getLeaderboardSnapshot, getDialedDate };

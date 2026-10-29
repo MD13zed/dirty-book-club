@@ -1,6 +1,9 @@
 import { getTheme } from "../theme";
 const C = getTheme("dark-purple");
 
+// Same backend address the rest of the app uses (VITE_API_URL); falls back to production if it isn't set
+const API_URL = import.meta.env.VITE_API_URL || "https://dirty-book-club-5mry.vercel.app";
+
 const ERROR_MESSAGES = {
   not_in_server: "This library is only for members of the club's Discord server. Join the server, then try logging in again.",
   oauth_failed:  "Login didn't work — please try again in a moment.",
@@ -28,7 +31,7 @@ export default function Login() {
         )}
 
         {/* Discord Login Button */}
-        <a href="https://dirty-book-club-5mry.vercel.app/auth/discord" style={{ textDecoration:"none" }}>
+        <a href={`${API_URL}/auth/discord`} style={{ textDecoration:"none" }}>
           <button style={{
             width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:12,
             background:"#5865F2", border:"none", borderRadius:6,

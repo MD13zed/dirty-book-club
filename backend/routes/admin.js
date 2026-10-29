@@ -102,6 +102,8 @@ router.post("/botm", async (req, res) => {
     // Only set botm_month on the newly picked book — previously picked BOTMs
     // must keep their own botm_month so BOTM history / library badges still show them.
     await pool.query("UPDATE books SET botm_month=$1 WHERE id=$2", [month, book_id]);
+    // The pick is no longer a candidate — drop its nomination (its votes go with it)
+    await pool.query("DELETE FROM nominations WHERE book_id=$1", [book_id]);
 
     const { rows: genreRows } = await pool.query("SELECT genre FROM book_genres WHERE book_id=$1", [book_id]);
     const genres = genreRows.map(g => g.genre);

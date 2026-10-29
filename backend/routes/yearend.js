@@ -1,7 +1,10 @@
 const express = require("express");
 const router  = express.Router();
 const cronAuth = require("../middleware/cronAuth");
+const cronOnce = require("../middleware/cronOnce");
 const pool    = require("../db/pool");
+const { rolePing } = require("../config");
+const { md } = require("../text");
 const { clubYear, CLUB_TIMEZONE } = require("../clubtime");
 const { monthValue } = require("../botmMonth");
 
@@ -135,7 +138,7 @@ async function postYearEnd() {
   if (topBook) {
     embeds.push({
       title:       `🏆 Highest Rated Book of ${year}`,
-      description: `**${topBook.title}**${topBook.author ? ` by ${topBook.author}` : ""}\n${topBook.avg_rating}★ average across ${topBook.review_count} review${topBook.review_count !== 1 ? "s" : ""}`,
+      description: `**${md(topBook.title)}**${topBook.author ? ` by ${md(topBook.author)}` : ""}\n${topBook.avg_rating}★ average across ${topBook.review_count} review${topBook.review_count !== 1 ? "s" : ""}`,
       color:       color.gold,
       ...(topBook.cover_url ? { thumbnail: { url: topBook.cover_url } } : {}),
     });
@@ -145,14 +148,14 @@ async function postYearEnd() {
   if (mostReviewed && mostReviewed.title !== topBook?.title) {
     embeds.push({
       title:       `💬 Most Discussed Book`,
-      description: `**${mostReviewed.title}**${mostReviewed.author ? ` by ${mostReviewed.author}` : ""}\n${mostReviewed.review_count} reviews · ${mostReviewed.avg_rating}★ avg`,
+      description: `**${md(mostReviewed.title)}**${mostReviewed.author ? ` by ${md(mostReviewed.author)}` : ""}\n${mostReviewed.review_count} reviews · ${mostReviewed.avg_rating}★ avg`,
       color:       color.pink,
     });
   }
 
   // Top reader
   if (topReader) {
-    const who = topReader.display_name || topReader.username;
+    const who = md(topReader.display_name || topReader.username);
     embeds.push({
       title:       `📖 Most Voracious Reader`,
       description: `**${who}** finished ${topReader.books_finished} book${topReader.books_finished !== 1 ? "s" : ""} this year`,
@@ -173,7 +176,7 @@ async function postYearEnd() {
   if (botms.length > 0) {
     embeds.push({
       title:       `📔 Books of the Month`,
-      description: botms.map(b => `**${b.botm_month}** — ${b.title}${b.author ? ` by ${b.author}` : ""}`).join("\n"),
+      description: botms.map(b => `**${b.botm_month}** — ${md(b.title)}${b.author ? ` by ${md(b.author)}` : ""}`).join("\n"),
       color:       color.gold,
     });
   }
@@ -202,7 +205,7 @@ async function postYearEnd() {
 
   for (let i = 0; i < chunks.length; i++) {
     const payload = { username: "Spicy Shelf", embeds: chunks[i] };
-    if (i === 0) payload.content = "<@&1445035924227493928>";
+    { const ping = rolePing(); if (i === 0 && ping) payload.content = ping; }
     const r = await fetch(WEBHOOK, {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
@@ -216,7 +219,7 @@ async function postYearEnd() {
 }
 
 // ── Route — called by Vercel cron ─────────────────────────────────────────────
-router.get("/", cronAuth, async (req, res) => {
+router.get("/", cronAuth, cronOnce("yearend", () => clubYear()), async (req, res) => {
   try {
     const result = await postYearEnd();
     res.json(result);

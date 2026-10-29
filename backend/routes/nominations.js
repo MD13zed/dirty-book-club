@@ -23,6 +23,7 @@ async function fetchNominations(memberId = null) {
      JOIN members m ON m.id = n.nominated_by
      LEFT JOIN book_genres g ON g.book_id = b.id
      LEFT JOIN nomination_votes v ON v.nomination_id = n.id
+     WHERE b.botm_month IS NULL   -- a book already picked as Book of the Month isn't a candidate any more
      GROUP BY n.id, b.id, b.title, b.author, b.series, b.cover_url, m.id, m.display_name
      ORDER BY vote_count DESC, n.nominated_at ASC`,
     memberId ? [memberId] : []

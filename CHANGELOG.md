@@ -4,6 +4,46 @@ All notable changes to The Spicy Shelf are documented here.
 
 ---
 
+## [3.7.0] — 2026-10-27
+
+> **Run `backend/db/v6_migration.sql` in the Neon SQL Editor** (creates the small `cron_runs` table). Until it's run everything still works — the cron jobs just don't have the double-post protection.
+
+### Added
+- **Slash commands no longer time out when the database is asleep.** A command still running after 1.8 s is answered straight away with "thinking…" and then edited with the real result (uses `@vercel/functions` `waitUntil` so Vercel keeps the function alive). Commands that answer faster behave exactly as before. `/dialed score` keeps its private reply. Turn off with `SLASH_DEFER_MS=0`.
+- **Cron jobs run once per period** (`middleware/cronOnce.js`): digest once a day, year-end once a year, the two Dialed posts once per Dialed day. A retry or repeated call returns `{skipped}` and posts nothing; a failed run releases its claim so a retry works; `?force=1` runs it again on purpose.
+- `GET /api/health?db=1` also wakes the database (optional — uses more Neon compute hours).
+
+### Removed
+- **Leftover root-level deploy files.** The API deploys from `backend/` and the frontend from `frontend/` (each Vercel project's Root Directory), so the repo root's `vercel.json`, `api/index.js` and `package.json` dependency list were never used and could only drift out of date. They're gone; the root `package.json` keeps just its scripts. Each project's own `vercel.json` (in `backend/` and `frontend/`) stays.
+
+### Changed
+- **Discord ids moved into config** (`backend/config.js`): the club role id and the Book-of-the-Month channel id can be set with `DISCORD_ROLE_BOOK_CLUB` and `DISCORD_BOTM_CHANNEL_ID`; the defaults are today's values, so nothing changes until you set them.
+- **Role pings only happen from production.** On a Vercel Preview deployment (or with `DISCORD_ROLE_PINGS=off`) the role isn't pinged, so testing can't ping the club.
+- The login button uses `VITE_API_URL` like the rest of the app (falls back to the production address if unset).
+- Backend dependency ranges (the only list that matters now) raised to the patched versions (express, axios, cors, dotenv, express-rate-limit, jsonwebtoken) so an older, vulnerable version can't be installed; `@vercel/functions` pinned to 3.6.1 (newer releases pull in vulnerable packages). `npm audit`: 0 issues.
+
+---
+
+## [3.6.9] — 2026-10-27
+
+### Fixed
+- **A custom display name survives logging in again.** Every login used to overwrite it with the Discord name; now the Discord name is only used when the site has none.
+- **A Book of the Month pick leaves the nominations list** (its nomination and votes are removed when you pick it, and already-picked books are hidden from the list), so it can't end up in a TBR poll again.
+- **Failed saves are visible.** The reading-status buttons and finish-date box show "Couldn't save — please try again" instead of failing silently, and an expired login no longer lets the page keep running after it starts redirecting to the login page. The total-pages box shows the book's own page count as a placeholder (leaving it blank means "use the book's page count").
+- **Default avatars use Discord's real formula** (the old maths lost precision on big Discord ids, so some members got the wrong default picture).
+- **`/search`, `/review` and `/reading`:** `%` and `_` typed in a title now match literally instead of acting as wildcards.
+- **Names and titles can't add formatting or links to Discord posts.** Member names, book titles, authors and series are escaped in the digest, year-end post, new-book/review/DNF/BOTM announcements, Dialed leaderboard and slash-command replies (review text is left as typed so spoiler tags still work).
+- **Dialed ties are ordered by who submitted first** instead of arbitrarily.
+- **Open Library / Google search results carry at most 40 subjects each** (some books came back with 100+), which makes search responses smaller.
+
+### Docs
+- Corrected the Dialed.gg description: the morning post pings `@here` (the 3.6.5 note said nothing pings), the evening post doesn't, and `/dialed score:` posts nothing public. README now has a "Daily Dialed.gg posts" section, lists `CRON_SECRET` for all four cron endpoints, and no longer lists the unused `DISCORD_ROLE_GAME_ON`.
+
+### Removed
+- Leftover files from the old Oracle/MySQL/pm2/nginx hosting setup (`nginx/`, `ecosystem.config.js`, `scripts/setup.sh`, `scripts/deploy.sh`, `scripts/duckdns.sh`) and the old one-off update notes (`NOTES.md`, `SETUP-GUIDE.md`, `TROUBLESHOOTING.md`). They're all still in git history.
+
+---
+
 ## [3.6.8] — 2026-10-27
 
 > **Run `backend/db/v5_migration.sql` in the Neon SQL Editor BEFORE deploying.** (Adds `reviews.created_at`; existing reviews are backfilled so past numbers don't change.)
@@ -72,7 +112,7 @@ All notable changes to The Spicy Shelf are documented here.
 ## [3.6.5] — 2026-10-06
 
 ### Changed
-- **Morning Dialed.gg post is now a quiet reminder.** `GET /api/dialed-morning` no longer pings the `@game on` role and no longer posts a leaderboard — it just posts the game links (Dialed.gg, Wordle, Daily Word Wheel) with a nudge to play. Posts use `allowed_mentions: { parse: [] }` so nothing pings.
+- **Morning Dialed.gg post is now a quiet reminder.** `GET /api/dialed-morning` no longer pings the `@game on` role and no longer posts a leaderboard — it just posts the game links (Dialed.gg, Wordle, Daily Word Wheel) with a nudge to play. *(This release made the post ping nobody; a later one changed it to ping `@here` — see 3.6.9. Everything else here is still accurate.)*
 - **Score submissions no longer post or edit a leaderboard.** `/dialed score:` just records the score and replies privately to the submitter.
 
 ### Added

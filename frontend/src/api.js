@@ -17,7 +17,7 @@ async function req(method, path, body) {
     headers: headers(),
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
-  if (res.status === 401) { localStorage.removeItem("dbc_token"); window.location.href = "/"; return; }
+  if (res.status === 401) { localStorage.removeItem("dbc_token"); window.location.href = "/"; return new Promise(() => {}); }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
   return data;
@@ -28,7 +28,7 @@ async function reqAuth(method, path) {
     method,
     headers: headers(),
   });
-  if (res.status === 401) { localStorage.removeItem("dbc_token"); window.location.href = "/"; return; }
+  if (res.status === 401) { localStorage.removeItem("dbc_token"); window.location.href = "/"; return new Promise(() => {}); }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
   return data;

@@ -97,6 +97,17 @@ Installable as a PWA on iOS (Safari → Add to Home Screen) and Android (Chrome 
 - **🎉 Club Applause** — top 3 readers (most books finished this calendar month) and top 3 reviewers (most reviews left this calendar month), with medal rankings
 - Falls back to a "Quiet week 🌙" message if nothing happened
 
+### Cron jobs run once per period
+`/api/digest` (once a day), `/api/yearend` (once a year) and the two Dialed endpoints (once per Dialed day) remember that they ran (`cron_runs` table, `backend/db/v6_migration.sql`), so a retry or a repeated call posts nothing the second time. Add `?force=1` to run one again on purpose.
+
+### Where the API's packages live
+The API deploys from the `backend/` folder (Vercel → Settings → Build and Deployment → Root Directory = `backend`), so its dependencies are listed only in `backend/package.json`. The root `package.json` has no dependencies; the frontend has its own in `frontend/package.json`.
+
+### Daily Dialed.gg posts
+- **Morning** (`/api/dialed-morning`, cron-job.org): pings `@here` and posts the day's game links (Dialed.gg, Wordle, Daily Word Wheel). No leaderboard.
+- **Evening** (`/api/dialed-evening`, schedule it before midnight Eastern): posts the day's final top 5 and winner. No pings.
+- `/dialed score:` only records the score and replies privately to the submitter; it doesn't post or edit anything public.
+
 ---
 
 ## Tech Stack
@@ -141,17 +152,22 @@ nomination_votes  — one vote per member per nomination
 | `DISCORD_REDIRECT_URI` | OAuth callback URL |
 | `DISCORD_BOT_TOKEN` | Bot token for announcements and slash commands |
 | `DISCORD_APP_PUBLIC_KEY` | For verifying slash command signatures |
-| `DISCORD_GUILD_ID` | Server ID for instant command registration |
+| `DISCORD_GUILD_ID` | The club's server ID. Only members of this server can log in; also used for instant command registration |
 | `DISCORD_WEBHOOK_ANNOUNCEMENTS` | Webhook for new books/reviews channel |
 | `DISCORD_WEBHOOK_BOTM` | Webhook for book discussions channel |
 | `CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name |
 | `CLOUDINARY_API_KEY` | Cloudinary API key |
 | `CLOUDINARY_API_SECRET` | Cloudinary API secret |
-| `CRON_SECRET` | Bearer token required to call `/api/digest` and `/api/yearend` |
+| `CRON_SECRET` | Bearer token required to call `/api/digest`, `/api/yearend`, `/api/dialed-morning` and `/api/dialed-evening`. If it isn't set those endpoints refuse every request |
 | `FRONTEND_URL` | Frontend deployment URL |
 | `API_URL` | Backend deployment URL |
-| `DIALED_CHANNEL_ID` | Channel where the daily Dialed.gg leaderboard message lives |
-| `DISCORD_ROLE_GAME_ON` | Role pinged once each morning to announce yesterday's Dialed.gg winner and remind the club to play |
+| `DIALED_CHANNEL_ID` | Channel where the daily Dialed.gg morning reminder and final leaderboard are posted |
+| `DISCORD_ROLE_BOOK_CLUB` | Optional. Role pinged for Book of the Month, TBR polls, the digest and year-end post. Defaults to the club's current role |
+| `DISCORD_BOTM_CHANNEL_ID` | Optional. Channel for Book of the Month announcements and TBR polls. Defaults to the club's current channel |
+| `DISCORD_ROLE_PINGS` | Optional. Set to `off` to silence all role pings. Pings are also skipped automatically on Vercel Preview deployments |
+| `SLASH_DEFER_MS` | Optional. A slash command still running after this many ms (default 1800) is answered with "thinking…" and finished in the background. `0` turns it off |
+| `VITE_API_URL` | (Frontend project) address of the backend, e.g. `https://your-api.vercel.app`. The login button and every API call use it |
+| `CLUB_TIMEZONE` | Optional. Timezone for finish dates, "this month" and the year-end post. Defaults to `America/Aruba` |
 
 ### Frontend (Vercel)
 

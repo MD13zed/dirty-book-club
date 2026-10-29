@@ -1,8 +1,11 @@
 const express = require("express");
 const router  = express.Router();
 const cronAuth = require("../middleware/cronAuth");
+const cronOnce = require("../middleware/cronOnce");
 const pool    = require("../db/pool");
-const { clubMonthStart, CLUB_TIMEZONE } = require("../clubtime");
+const { rolePing } = require("../config");
+const { md } = require("../text");
+const { clubMonthStart, clubToday, CLUB_TIMEZONE } = require("../clubtime");
 const { monthValue } = require("../botmMonth");
 
 const WEBHOOK  = process.env.DISCORD_WEBHOOK_ANNOUNCEMENTS;
@@ -123,7 +126,7 @@ async function postDigest() {
   if (botm) {
     embeds.push({
       title:       `🏆 Book of the Month — ${botm.botm_month}`,
-      description: `**${botm.title}**${botm.author ? ` by ${botm.author}` : ""}`,
+      description: `**${md(botm.title)}**${botm.author ? ` by ${md(botm.author)}` : ""}`,
       color:       color.gold,
     });
   }
@@ -135,8 +138,8 @@ const truncate = (str, max = 4000) => str.length > max ? str.slice(0, max) + "\n
     embeds.push({
       title: `📚 Added this week — ${newBooks.length} book${newBooks.length!==1?"s":""}`,
       description: truncate(newBooks.map(b => {
-        const who = b.display_name || b.username || "someone";
-        return `**${b.title}**${b.author?` *by ${b.author}*`:""} — added by ${who}`;
+        const who = md(b.display_name || b.username || "someone");
+        return `**${md(b.title)}**${b.author?` *by ${md(b.author)}*`:""} — added by ${who}`;
       }).join("\n")),
       color: color.purple,
     });
@@ -147,8 +150,8 @@ const truncate = (str, max = 4000) => str.length > max ? str.slice(0, max) + "\n
     embeds.push({
       title: `✅ Finished this week — ${finishedBooks.length} book${finishedBooks.length!==1?"s":""}`,
       description: truncate(finishedBooks.map(f => {
-        const who = f.display_name || f.username || "someone";
-        return `**${who}** finished **${f.title}**`;
+        const who = md(f.display_name || f.username || "someone");
+        return `**${who}** finished **${md(f.title)}**`;
       }).join("\n")),
       color: color.green,
     });
@@ -159,8 +162,8 @@ const truncate = (str, max = 4000) => str.length > max ? str.slice(0, max) + "\n
     embeds.push({
       title: `📖 Currently reading`,
       description: truncate(reading.map(r => {
-        const who  = r.display_name || r.username;
-        let line   = `**${who}** — ${r.title}`;
+        const who  = md(r.display_name || r.username);
+        let line   = `**${who}** — ${md(r.title)}`;
         if (r.current_page && r.total_pages) {
           const pct    = Math.round((r.current_page / r.total_pages) * 100);
           const filled = Math.round(pct / 10);
@@ -178,9 +181,9 @@ const truncate = (str, max = 4000) => str.length > max ? str.slice(0, max) + "\n
     embeds.push({
       title: `⭐ Reviews this week`,
       description: truncate(reviews.map(r => {
-        const who   = r.display_name || r.username;
+        const who   = md(r.display_name || r.username);
         const stars = "⭐".repeat(r.rating);
-        let line    = `**${r.title}** — ${stars} by ${who}`;
+        let line    = `**${md(r.title)}** — ${stars} by ${who}`;
         if (r.notes) line += `\n*"${r.notes.slice(0, 100)}${r.notes.length > 100 ? "…" : ""}"*`;
         return line;
       }).join("\n\n")),
@@ -193,7 +196,7 @@ const truncate = (str, max = 4000) => str.length > max ? str.slice(0, max) + "\n
     embeds.push({
       title: `🗳 Current nominations`,
       description: truncate(noms.map((n, i) =>
-        `**${i+1}.** ${n.title} — ${n.vote_count} vote${n.vote_count!==1?"s":""}`
+        `**${i+1}.** ${md(n.title)} — ${n.vote_count} vote${n.vote_count!==1?"s":""}`
       ).join("\n")),
       color: color.purple,
     });
@@ -206,7 +209,7 @@ const truncate = (str, max = 4000) => str.length > max ? str.slice(0, max) + "\n
   if (topReaders.length > 0) {
     applauseLines.push(`**📚 Top Readers — ${monthLabel}**`);
     topReaders.forEach((r, i) => {
-      const who = r.display_name || r.username;
+      const who = md(r.display_name || r.username);
       const medal = ["🥇", "🥈", "🥉"][i] || "•";
       applauseLines.push(`${medal} **${who}** — ${r.books_finished} book${r.books_finished !== 1 ? "s" : ""} finished`);
     });
@@ -216,7 +219,7 @@ const truncate = (str, max = 4000) => str.length > max ? str.slice(0, max) + "\n
     if (applauseLines.length > 0) applauseLines.push("");
     applauseLines.push(`**⭐ Top Reviewers — ${monthLabel}**`);
     topReviewers.forEach((r, i) => {
-      const who = r.display_name || r.username;
+      const who = md(r.display_name || r.username);
       const medal = ["🥇", "🥈", "🥉"][i] || "•";
       applauseLines.push(`${medal} **${who}** — ${r.review_count} review${r.review_count !== 1 ? "s" : ""}`);
     });
@@ -260,7 +263,7 @@ const truncate = (str, max = 4000) => str.length > max ? str.slice(0, max) + "\n
       embeds: chunks[i],
     };
     // Only ping the role on the first message
-    if (i === 0) payload.content = "<@&1445035924227493928>";
+    { const ping = rolePing(); if (i === 0 && ping) payload.content = ping; }
 
     const r = await fetch(WEBHOOK, {
       method:  "POST",
@@ -277,7 +280,7 @@ const truncate = (str, max = 4000) => str.length > max ? str.slice(0, max) + "\n
 }
 
 // ── Route — called by Vercel cron ─────────────────────────────────────────────
-router.get("/", cronAuth, async (req, res) => {
+router.get("/", cronAuth, cronOnce("digest", clubToday), async (req, res) => {
   try {
     const result = await postDigest();
     res.json(result);

@@ -1,9 +1,10 @@
 const https = require("https");
+const { md } = require("./text");
 
 const WEBHOOK_ANNOUNCEMENTS = process.env.DISCORD_WEBHOOK_ANNOUNCEMENTS;
 const WEBHOOK_BOTM          = process.env.DISCORD_WEBHOOK_BOTM;
 const BOT_TOKEN             = process.env.DISCORD_BOT_TOKEN;
-const BOTM_CHANNEL_ID       = "1369670347229761614";
+const { BOTM_CHANNEL_ID, rolePing } = require("./config");
 
 // Returns a promise that resolves once Discord has answered. Callers on Vercel
 // MUST await this — serverless functions are frozen the moment the HTTP
@@ -68,6 +69,29 @@ function discordRequest(method, path, payload) {
   });
 }
 
+// Edit the "thinking…" reply of a deferred slash command. Uses the interaction's own token
+// (valid 15 minutes), so no bot authorization header is involved.
+function interactionFollowup(applicationId, token, data) {
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify({ content: data?.content, embeds: data?.embeds, allowed_mentions: { parse: [] } });
+    const req = https.request({
+      hostname: "discord.com",
+      path:     `/api/v10/webhooks/${applicationId}/${token}/messages/@original`,
+      method:   "PATCH",
+      headers:  { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(body) },
+      timeout:  8000,
+    }, res => {
+      let out = "";
+      res.on("data", d => out += d);
+      res.on("end", () => res.statusCode < 300 ? resolve(true) : reject(new Error(`Discord ${res.statusCode}: ${out.slice(0, 200)}`)));
+    });
+    req.on("timeout", () => req.destroy(new Error("Discord follow-up timed out")));
+    req.on("error", reject);
+    req.write(body);
+    req.end();
+  });
+}
+
 // Same as before for existing callers: resolves just the parsed JSON body.
 function discordAPI(method, path, payload) {
   return discordRequest(method, path, payload).then(r => r.data);
@@ -82,15 +106,15 @@ function clip(text, max) {
 // ── Notify: book added ────────────────────────────────────────────────────────
 async function notifyBookAdded({ title, author, series, genres, cover_url, added_by_name }) {
   const genreStr  = genres?.length ? genres.join(", ") : "Untagged";
-  const seriesStr = series ? ` *(${series})*` : "";
+  const seriesStr = series ? ` *(${md(series)})*` : "";
   return postWebhook(WEBHOOK_ANNOUNCEMENTS, {
     embeds: [{
       title:       `📚 New Book Added!`,
-      description: `**${title}**${seriesStr}\nby *${author || "Unknown"}*`,
+      description: `**${md(title)}**${seriesStr}\nby *${md(author || "Unknown")}*`,
       color:       0xb08af0,
       fields: [
         { name: "Genres",   value: genreStr,      inline: true },
-        { name: "Added by", value: added_by_name, inline: true },
+        { name: "Added by", value: md(added_by_name), inline: true },
       ],
       thumbnail: cover_url ? { url: cover_url } : undefined,
       timestamp: new Date().toISOString(),
@@ -107,7 +131,7 @@ async function notifyReviewLeft({ book_title, member_name, rating, notes }) {
   return postWebhook(WEBHOOK_ANNOUNCEMENTS, {
     embeds: [{
       title:       `✍️ New Review`,
-      description: `**${member_name}** reviewed **${book_title}**`,
+      description: `**${md(member_name)}** reviewed **${md(book_title)}**`,
       color:       0xd060a0,
       fields: [
         { name: "Rating", value: stars,   inline: true },
@@ -123,8 +147,8 @@ async function notifyDnf({ book_title, member_name, reason, reasonOnly = false }
   const clean   = (reason || "").trim().replace(/\|\|/g, "| |");   // stop "||" from breaking the spoiler
   const trimmed = clean.length > 900 ? clean.slice(0, 897) + "…" : clean;
   const lines = [reasonOnly
-    ? `**${member_name}** added why they DNF'd **${book_title}**`
-    : `**${member_name}** didn't finish **${book_title}**`];
+    ? `**${md(member_name)}** added why they DNF'd **${md(book_title)}**`
+    : `**${md(member_name)}** didn't finish **${md(book_title)}**`];
   if (trimmed) lines.push(`Why: ||${trimmed}||`);
   return postWebhook(WEBHOOK_ANNOUNCEMENTS, {
     embeds: [{
@@ -142,14 +166,14 @@ async function announceBookOfTheMonth({ title, author, series, genres, cover_url
   if (!BOT_TOKEN) { console.warn("DISCORD_BOT_TOKEN not set"); return { ok: false, thread: false, error: "DISCORD_BOT_TOKEN is not set" }; }
 
   const genreStr   = genres?.length ? genres.join(", ") : "Untagged";
-  const seriesStr  = series ? ` *(${series})*` : "";
+  const seriesStr  = series ? ` *(${md(series)})*` : "";
   const threadName = clip(`${month} 📖 ${title}`, 100);   // Discord thread names max 100 chars
 
   const { status, data: msg } = await discordRequest("POST", `/channels/${BOTM_CHANNEL_ID}/messages`, {
-    content: "<@&1445035924227493928>",
+    content: rolePing() || undefined,
     embeds: [{
       title:       `📔 Book of the Month — ${month}`,
-      description: `**${title}**${seriesStr}\nby *${author || "Unknown"}*`,
+      description: `**${md(title)}**${seriesStr}\nby *${md(author || "Unknown")}*`,
       color:       0xa060d0,
       fields: [{ name: "Genres", value: clip(genreStr, 1024), inline: true }],
       thumbnail: cover_url ? { url: cover_url } : undefined,
@@ -185,7 +209,7 @@ async function postTbrPoll({ books, duration_hours = 48 }) {
   const hours = Math.min(768, Math.max(1, Math.round(Number(duration_hours)) || 48));
 
   const { status, data } = await discordRequest("POST", `/channels/${BOTM_CHANNEL_ID}/messages`, {
-    content: "<@&1445035924227493928>",
+    content: rolePing() || undefined,
     poll: {
       question:         { text: "📚 Which book should we read next?" },
       answers:          books.map(b => ({
@@ -203,4 +227,4 @@ async function postTbrPoll({ books, duration_hours = 48 }) {
   return { ok: true };
 }
 
-module.exports = { notifyBookAdded, notifyReviewLeft, notifyDnf, announceBookOfTheMonth, postTbrPoll, discordAPI, discordRequest };
+module.exports = { notifyBookAdded, notifyReviewLeft, notifyDnf, announceBookOfTheMonth, postTbrPoll, discordAPI, discordRequest, interactionFollowup };

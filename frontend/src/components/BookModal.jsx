@@ -168,6 +168,10 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
 
   const STATUS_TOAST = { want_to_read:"📚 Want to read", reading:"📖 Now reading", finished:"✅ Marked finished", dnf:"💀 Marked DNF" };
 
+  // For buttons that don't have their own error handling: a failed save shows a message instead of failing silently
+  const showSaveError = () => { setProgressToast("⚠ Couldn't save — please try again"); setTimeout(() => setProgressToast(null), 3000); };
+  const saveProgressSafe = (updates) => saveProgress(updates).catch(showSaveError);
+
   const saveProgress = async (updates) => {
     const p = { book_id:book.id, ...(progress||{}), ...updates };
     const saved = await api.saveProgress(p);
@@ -203,7 +207,7 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
     const val  = pageValue(field, text);
     const prev = field === "current_page" ? (progress?.current_page ?? 0) : (progress?.total_pages ?? null);
     if (val === prev) return;
-    saveProgress({ [field]: val }).catch(() => {});
+    saveProgress({ [field]: val }).catch(showSaveError);
   };
   const onPageType = (field, setter) => (e) => {
     const text = e.target.value;
@@ -279,7 +283,7 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
                 </div>
                 <div style={{ flex:1 }}>
                   <label style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, display:"block", marginBottom:3 }}>TOTAL PAGES</label>
-                  <input type="number" value={editForm.total_pages} onChange={e=>setEditForm(f=>({...f,total_pages:e.target.value}))} placeholder="e.g. 400" style={INP(C)} />
+                  <input type="number" value={editForm.total_pages} onChange={e=>setEditForm(f=>({...f,total_pages:e.target.value}))} placeholder={book.total_pages ? `${book.total_pages} (book default)` : "e.g. 400"} style={INP(C)} />
                 </div>
               </div>
               <input value={editForm.cover_url} onChange={e=>setEditForm(f=>({...f,cover_url:e.target.value}))} placeholder="Cover URL" style={INP(C)} />
@@ -404,7 +408,7 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
                     <button key={k} onClick={() => {
                       const updates = { status: k };
                       if (k !== "finished") { updates.finished_at = null; setFinishedAt(""); }
-                      saveProgress(updates);
+                      saveProgressSafe(updates);
                     }}
                       style={{ background:progress?.status===k?STATUS_COLORS[k]+"44":"transparent", border:`1px solid ${progress?.status===k?STATUS_COLORS[k]:C.border}`, borderRadius:20, color:progress?.status===k?STATUS_COLORS[k]:C.dim, fontFamily:"monospace", fontSize:11, padding:"4px 12px", cursor:"pointer" }}>
                       {v}
@@ -440,7 +444,7 @@ export default function BookModal({ book: initialBook, allReviews, onClose, onBo
                 <div>
                   <label style={{ fontFamily:"monospace", fontSize:11, color:C.dimmer, display:"block", marginBottom:4 }}>DATE FINISHED</label>
                   <DateField C={C} value={finishedAt}
-                    onChange={v => { setFinishedAt(v); saveProgress({ finished_at: v || null }); }} />
+                    onChange={v => { setFinishedAt(v); saveProgressSafe({ finished_at: v || null }); }} />
                 </div>
               )}
 

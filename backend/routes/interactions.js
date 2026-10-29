@@ -4,6 +4,21 @@ const pool = require("../db/pool");
 const { randomUUID: uuidv4 } = require("crypto");
 const dialed = require("../dialed");
 const { clubToday, clubMonthStart } = require("../clubtime");
+const { md, likeEscape } = require("../text");
+const { interactionFollowup } = require("../discord");
+
+// Discord requires an answer within 3 seconds. Most commands answer well inside that, but the
+// first command after a quiet spell can wait on the sleeping database. If a command is still
+// running after SLASH_DEFER_MS we answer Discord right away with "thinking…" and edit that
+// message with the real result when it's ready. Set SLASH_DEFER_MS=0 to turn this off.
+const DEFER_AFTER_MS = Number(process.env.SLASH_DEFER_MS ?? 1800);
+let waitUntil = null;
+try { ({ waitUntil } = require("@vercel/functions")); } catch { /* not installed / not on Vercel */ }
+const keepAlive = (promise) => {
+  // On Vercel the function is frozen as soon as the response is sent, unless it's told to wait
+  if (waitUntil) { try { waitUntil(promise); } catch (e) { console.warn("waitUntil unavailable:", e.message); } }
+};
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 const DIALED_TIMEZONE = process.env.DIALED_TIMEZONE || "America/New_York";
 
@@ -63,7 +78,7 @@ async function findBook(query) {
      LEFT JOIN reviews r ON r.book_id = b.id AND r.rating > 0
      WHERE b.title ILIKE $1
      GROUP BY b.id ORDER BY LENGTH(b.title) ASC LIMIT 1`,
-    [`%${query}%`]
+    [`%${likeEscape(query)}%`]
   );
   return rows[0] || null;
 }
@@ -88,7 +103,7 @@ async function handleShelf(res) {
   const fields = rows.map(b => ({
     name:  b.title,
     value: [
-      b.author ? `*by ${b.author}*` : "",
+      b.author ? `*by ${md(b.author)}*` : "",
       b.avg_rating ? `⭐ ${b.avg_rating} (${b.review_count} review${b.review_count!==1?"s":""})` : "_No reviews yet_",
     ].filter(Boolean).join("\n"),
     inline: false,
@@ -109,9 +124,9 @@ async function handleBotm(res) {
   if (!rows.length) return res.json(reply([embed("🏆 Book of the Month", "Not set yet.", color.gold)]));
   const b = rows[0];
   const desc = [
-    `**${b.title}**`,
-    b.author ? `*by ${b.author}*` : "",
-    b.series ? `📚 ${b.series}` : "",
+    `**${md(b.title)}**`,
+    b.author ? `*by ${md(b.author)}*` : "",
+    b.series ? `📚 ${md(b.series)}` : "",
     b.genres?.length ? `\n**Genres:** ${b.genres.join(", ")}` : "",
     b.avg_rating ? `\n⭐ ${b.avg_rating} club rating` : "",
   ].filter(Boolean).join("\n");
@@ -184,17 +199,17 @@ async function handleStats(res) {
 
   if (topRated) fields.push({
     name:"🥇 Top rated",
-    value:`**${topRated.title}**${topRated.author?` *by ${topRated.author}*`:""}  \n${topRated.avg}★ from ${topRated.cnt} review${topRated.cnt!==1?"s":""}`,
+    value:`**${md(topRated.title)}**${topRated.author?` *by ${md(topRated.author)}*`:""}  \n${topRated.avg}★ from ${topRated.cnt} review${topRated.cnt!==1?"s":""}`,
     inline:false,
   });
   if (mostReviewed) fields.push({
     name:"💬 Most reviewed",
-    value:`**${mostReviewed.title}** — ${mostReviewed.cnt} review${mostReviewed.cnt!==1?"s":""}`,
+    value:`**${md(mostReviewed.title)}** — ${mostReviewed.cnt} review${mostReviewed.cnt!==1?"s":""}`,
     inline:false,
   });
   if (topReader) fields.push({
     name:"🔥 Most active this month",
-    value:`**${topReader.display_name||topReader.username}** — ${topReader.cnt} book${topReader.cnt!==1?"s":""} finished`,
+    value:`**${md(topReader.display_name||topReader.username)}** — ${topReader.cnt} book${topReader.cnt!==1?"s":""} finished`,
     inline:false,
   });
 
@@ -219,14 +234,14 @@ async function handleSearch(res, options) {
      LEFT JOIN reviews r ON r.book_id = b.id AND r.rating > 0
      WHERE b.title ILIKE $1
      GROUP BY b.id ORDER BY LENGTH(b.title) ASC LIMIT 4`,
-    [`%${query}%`]
+    [`%${likeEscape(query)}%`]
   );
-  if (!rows.length) return res.json(reply([embed("🔍 No results", `No books matching **"${query}"**`, color.indigo)]));
+  if (!rows.length) return res.json(reply([embed("🔍 No results", `No books matching **"${md(query)}"**`, color.indigo)]));
   const fields = rows.map(b => ({
     name:  b.title,
     value: [
-      b.author ? `*by ${b.author}*` : "",
-      b.series ? `📚 ${b.series}` : "",
+      b.author ? `*by ${md(b.author)}*` : "",
+      b.series ? `📚 ${md(b.series)}` : "",
       b.genres?.filter(Boolean).length ? b.genres.join(", ") : "",
       b.avg_rating ? `⭐ ${b.avg_rating} (${b.review_count} review${b.review_count!==1?"s":""})` : "_No reviews yet_",
     ].filter(Boolean).join("\n"),
@@ -242,7 +257,7 @@ async function handleReview(res, options, discordId) {
   const memberId   = await getMemberId(discordId);
   if (!memberId) return res.json(err(`You need to log in first: ${SITE_URL}`));
   const book = await findBook(titleQuery);
-  if (!book) return res.json(err(`No book found matching **"${titleQuery}"**\nTry \`/search\` to find the exact title.`));
+  if (!book) return res.json(err(`No book found matching **"${md(titleQuery)}"**\nTry \`/search\` to find the exact title.`));
   await pool.query(
     `INSERT INTO reviews (id, book_id, member_id, rating, notes)
      VALUES ($1,$2,$3,$4,$5)
@@ -252,7 +267,7 @@ async function handleReview(res, options, discordId) {
   );
   return res.json(reply([embed(
     "✅ Review saved!",
-    [`**${book.title}**`, `${"⭐".repeat(rating)}`, notes?`*"${notes}"*`:""].filter(Boolean).join("\n"),
+    [`**${md(book.title)}**`, `${"⭐".repeat(rating)}`, notes?`*"${notes}"*`:""].filter(Boolean).join("\n"),
     color.green, [], book.cover_url||null,
   )]));
 }
@@ -347,7 +362,7 @@ async function handleReading(res, options, discordId) {
   const memberId   = await getMemberId(discordId);
   if (!memberId) return res.json(err(`You need to log in first: ${SITE_URL}`));
   const book = await findBook(titleQuery);
-  if (!book) return res.json(err(`No book found matching **"${titleQuery}"**\nTry \`/search\` to find the exact title.`));
+  if (!book) return res.json(err(`No book found matching **"${md(titleQuery)}"**\nTry \`/search\` to find the exact title.`));
   const today = clubToday();   // club time (Aruba), not UTC
   await pool.query(
     `INSERT INTO reading_progress (id, book_id, member_id, status, current_page, started_at, finished_at)
@@ -365,7 +380,7 @@ async function handleReading(res, options, discordId) {
   const labels = { want_to_read:"📚 Want to read", reading:"📖 Currently reading", finished:"✅ Finished", dnf:"💀 Did not finish" };
   return res.json(reply([embed(
     "📖 Progress updated!",
-    [`**${book.title}**`, `Status: ${labels[status]}`, status==="reading"&&page?`Page: ${page}`:""].filter(Boolean).join("\n"),
+    [`**${md(book.title)}**`, `Status: ${labels[status]}`, status==="reading"&&page?`Page: ${page}`:""].filter(Boolean).join("\n"),
     color.indigo, [], book.cover_url||null,
   )]));
 }
@@ -396,7 +411,7 @@ async function handleMyShelf(res, options, discordId) {
     fields.push({
       name:  STATUS_LABELS[st],
       value: books.map(b => {
-        let line = `**${b.title}**${b.author?` *by ${b.author}*`:""}`;
+        let line = `**${md(b.title)}**${b.author?` *by ${md(b.author)}*`:""}`;
         if (st==="reading" && b.current_page && b.total_pages) {
           const pct   = Math.round((b.current_page / b.total_pages) * 100);
           const filled = Math.round(pct / 10);
@@ -424,9 +439,9 @@ async function handleNominations(res) {
   );
   if (!rows.length) return res.json(reply([embed("🗳 Nominations", "No nominations yet! Add books on the website then nominate them.", color.indigo)]));
   const fields = rows.map((n, i) => ({
-    name:  `${i+1}. ${n.title}`,
+    name:  `${i+1}. ${n.title}`,   // field names are plain text — no escaping
     value: [
-      n.author ? `*by ${n.author}*` : "",
+      n.author ? `*by ${md(n.author)}*` : "",
       `▲ ${n.votes} vote${n.votes!==1?"s":""} · nominated by ${n.nominated_by}`,
     ].filter(Boolean).join("\n"),
     inline: false,
@@ -535,7 +550,7 @@ async function handleMembers(res, options) {
       fields.push({
         name: "📖 Currently reading",
         value: currentlyReading.map(b => {
-          let line = `**${b.title}**`;
+          let line = `**${md(b.title)}**`;
           if (b.current_page && b.total_pages) {
             const pct = Math.round((b.current_page / b.total_pages) * 100);
             const bar = "█".repeat(Math.round(pct/10)) + "░".repeat(10 - Math.round(pct/10));
@@ -551,14 +566,14 @@ async function handleMembers(res, options) {
       fields.push({
         name: "💬 Recent reviews",
         value: recentReviews.map(r =>
-          `**${r.title}** — ${"⭐".repeat(r.rating)}${r.notes ? `\n*"${r.notes.slice(0,80)}${r.notes.length>80?"…":""}"*` : ""}`
+          `**${md(r.title)}** — ${"⭐".repeat(r.rating)}${r.notes ? `\n*"${r.notes.slice(0,80)}${r.notes.length>80?"…":""}"*` : ""}`
         ).join("\n"),
         inline: false,
       });
     }
 
     return res.json(reply([embed(
-      `👤 ${name}`,
+      `👤 ${md(name)}`,
       `[View full profile](${SITE_URL})`,
       color.purple, fields,
     )]));
@@ -701,35 +716,61 @@ function handleGettingStarted(res) {
 }
 
 // ── Router ────────────────────────────────────────────────────────────────────
-router.post("/", verify, async (req, res) => {
-  try {
-    const { type, data, member, user, guild_id } = req.interaction;
-    const discordId = (member?.user || user)?.id;
+// Handlers call res.json(payload); this collects that payload instead of sending it, so the
+// router can decide between answering now or deferring.
+function collector() {
+  const c = { payload: null, json(p) { c.payload = p; return c; }, status() { return c; } };
+  return c;
+}
 
-    if (type === 1) return res.json({ type:1 });
-
-    if (type === 2) {
-      const { name, options = [] } = data;
-      switch (name) {
-        case "shelf":        return await handleShelf(res);
-        case "botm":         return await handleBotm(res);
-        case "stats":        return await handleStats(res);
-        case "search":       return await handleSearch(res, options);
-        case "review":       return await handleReview(res, options, discordId);
-        case "reading":      return await handleReading(res, options, discordId);
-        case "myshelf":      return await handleMyShelf(res, options, discordId);
-        case "nominations":  return await handleNominations(res);
-        case "leaderboard":      return await handleLeaderboard(res);
-        case "members":          return await handleMembers(res, options);
-        case "getting-started":  return handleGettingStarted(res);
-        case "dialed":           return await handleDialed(res, options, discordId, guild_id);
-        default:                 return res.json(err("Unknown command."));
-      }
-    }
-  } catch (e) {
-    console.error("Interaction error:", e);
-    return res.json(err("Something went wrong — try again."));
+async function runCommand(name, options, discordId, guild_id, res) {
+  switch (name) {
+    case "shelf":        return await handleShelf(res);
+    case "botm":         return await handleBotm(res);
+    case "stats":        return await handleStats(res);
+    case "search":       return await handleSearch(res, options);
+    case "review":       return await handleReview(res, options, discordId);
+    case "reading":      return await handleReading(res, options, discordId);
+    case "myshelf":      return await handleMyShelf(res, options, discordId);
+    case "nominations":  return await handleNominations(res);
+    case "leaderboard":      return await handleLeaderboard(res);
+    case "members":          return await handleMembers(res, options);
+    case "getting-started":  return handleGettingStarted(res);
+    case "dialed":           return await handleDialed(res, options, discordId, guild_id);
+    default:                 return res.json(err("Unknown command."));
   }
+}
+
+// /dialed score replies privately; the "thinking…" placeholder has to be private too, because
+// a message can't change from public to private after it's been sent.
+const isPrivateReply = (name, options) => name === "dialed" && options?.[0]?.name === "score";
+
+router.post("/", verify, async (req, res) => {
+  const { type, data, member, user, guild_id, token, application_id } = req.interaction;
+  const discordId = (member?.user || user)?.id;
+
+  if (type === 1) return res.json({ type:1 });
+  if (type !== 2) return res.status(400).json({ error: "Unsupported interaction" });   // used to hang with no answer
+
+  const { name, options = [] } = data;
+  const c = collector();
+  const work = runCommand(name, options, discordId, guild_id, c)
+    .then(() => c.payload || err("Something went wrong — try again."))
+    .catch(e => { console.error("Interaction error:", e); return err("Something went wrong — try again."); });
+
+  if (!DEFER_AFTER_MS) return res.json(await work);
+
+  const SLOW = Symbol("slow");
+  const first = await Promise.race([work, sleep(DEFER_AFTER_MS).then(() => SLOW)]);
+  if (first !== SLOW) return res.json(first);
+
+  // Still running: acknowledge now, finish in the background, then replace the placeholder
+  res.json({ type:5, data:{ flags: isPrivateReply(name, options) ? 64 : 0 } });
+  keepAlive(
+    work
+      .then(payload => interactionFollowup(application_id, token, payload.data))
+      .catch(e => console.error("Slash command follow-up failed:", e.message))
+  );
 });
 
 module.exports = router;

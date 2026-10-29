@@ -44,7 +44,7 @@ function mapOpenLibrary(docs) {
     total_pages: d.number_of_pages_median || "",
     isbn:        (d.isbn || [])[0] || "",
     series:      (d.series || [])[0] || "",
-    subjects:    d.subject || [],
+    subjects:    (d.subject || []).slice(0, 40),   // Open Library can return 100+ tags per book
     source:      "openlibrary",
   }));
 }
@@ -64,7 +64,7 @@ function mapGoogle(items) {
       total_pages: v.pageCount || "",
       isbn:        (i13 && i13.identifier) || (i10 && i10.identifier) || "",
       series:      "",
-      subjects:    v.categories || [],
+      subjects:    (v.categories || []).slice(0, 40),
       source:      "google",
     };
   });

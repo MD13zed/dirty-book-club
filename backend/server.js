@@ -44,9 +44,16 @@ app.use("/api/dialed-evening", require("./routes/dialed-evening"));
 // DB can keep auto-suspending and preserve free-tier compute hours.
 // Point a cron-job.org job at https://<backend>/api/health every ~5 min.
 // `uptime` lets you see if a ping hit a warm instance (high) or cold (near 0).
-app.get(["/health", "/api/health"], (req, res) =>
-  res.json({ ok: true, ts: new Date(), uptime: Math.round(process.uptime()) })
-);
+// Add ?db=1 to also wake the database (uses more Neon compute hours, but the first slash
+// command after a quiet spell won't have to wait for it to start).
+app.get(["/health", "/api/health"], async (req, res) => {
+  const out = { ok: true, ts: new Date(), uptime: Math.round(process.uptime()) };
+  if (req.query.db === "1") {
+    try { await require("./db/pool").query("SELECT 1"); out.db = true; }
+    catch (e) { out.ok = false; out.db = false; console.error("Health DB check failed:", e.message); return res.status(503).json(out); }
+  }
+  res.json(out);
+});
 app.use((req, res) => res.status(404).json({ error: "Not found" }));
 app.use((err, req, res, next) => {
   // Known "client did something wrong" errors get a real message; everything else is a generic 500

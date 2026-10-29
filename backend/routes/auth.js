@@ -66,14 +66,14 @@ router.get("/discord/callback", async (req, res) => {
     const displayName = global_name || username;
     const avatarUrl   = avatar
       ? `https://cdn.discordapp.com/avatars/${discordId}/${avatar}.png`
-      : `https://cdn.discordapp.com/embed/avatars/${Number(discordId) % 5}.png`;
+      : `https://cdn.discordapp.com/embed/avatars/${Number((BigInt(discordId) >> 22n) % 6n)}.png`;
 
     await pool.query(
       `INSERT INTO members (discord_id, username, display_name, avatar_url)
        VALUES ($1, $2, $3, $4)
        ON CONFLICT (discord_id) DO UPDATE SET
          username     = EXCLUDED.username,
-         display_name = EXCLUDED.display_name,
+         display_name = COALESCE(members.display_name, EXCLUDED.display_name),   -- keep a name edited on the profile page
          avatar_url   = EXCLUDED.avatar_url,
          last_seen    = CURRENT_TIMESTAMP`,
       [discordId, username, displayName, avatarUrl]
